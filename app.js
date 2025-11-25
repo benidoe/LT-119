@@ -168,6 +168,15 @@ function startTalking() {
   pttBtn.classList.add('active');
   try { beepOn.play(); } catch {}
   if (micTrack) micTrack.enabled = true;
+
+  // Immediately update *your own* talking indicator locally
+  const userEl = document.getElementById(`user-${socket.id}`);
+  if (userEl) {
+    userEl.classList.add('talking');
+    userEl.innerHTML = `<b>${username}</b> (talking)`;
+  }
+
+  // Still notify the server so others see it
   socket.emit('startTalking', currentChannel);
 }
 
@@ -175,6 +184,14 @@ function stopTalking() {
   pttBtn.classList.remove('active');
   setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
+
+  // Immediately clear your own indicator locally
+  const userEl = document.getElementById(`user-${socket.id}`);
+  if (userEl) {
+    userEl.classList.remove('talking');
+    userEl.innerHTML = `<b>${username}</b>`;
+  }
+
   socket.emit('stopTalking', currentChannel);
 }
 
