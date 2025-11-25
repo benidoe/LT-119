@@ -1,0 +1,217 @@
+/* Base layout */
+body {
+  font-family: 'Inter', sans-serif;
+  background: #121212;
+  color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.container {
+  background: #1e1e1e;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  width: 95%;
+  max-width: 480px;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 20px;
+  color: #00bfa5; /* teal accent */
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* Inputs and buttons */
+.input-group {
+  margin: 15px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+label {
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+input[type="text"] {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  width: 90%;
+  text-align: center;
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.custom-select select {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  width: 100%;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.custom-select select option {
+  text-align: center;
+}
+
+.custom-select select:hover {
+  background: #3a3a3a;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 14px; /* tighter so text fits */
+  border: none;
+  border-radius: 6px;
+  background: #00bfa5; /* teal accent */
+  color: #121212;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 14px;
+  flex: 1;
+  white-space: nowrap; /* keep text on one line */
+}
+
+.btn:hover {
+  background: #009e8c;
+}
+
+.btn.btn-secondary {
+  background: #00bfa5; /* teal accent */
+  color: #121212;
+}
+
+.btn.btn-secondary:hover {
+  background: #009e8c;
+}
+
+/* Push-to-talk button */
+.ptt-container {
+  margin: 25px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.ptt-btn {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: none;
+  background: #333;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0,0,0,0.6);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.ptt-btn.active {
+  background: #ff3b3b;
+  box-shadow: 0 0 25px #ff3b3b;
+}
+
+/* Controls */
+#controls {
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#volume {
+  width: 60%;
+  margin: 0 10px;
+}
+
+/* Status messages */
+.status {
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.status.error {
+  background: #ff3b3b;
+  color: #fff;
+}
+
+.status.success {
+  background: #00bfa5; /* teal accent for success */
+  color: #121212;
+}
+
+/* User list */
+.user-list {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.user-list h3 {
+  margin-bottom: 10px;
+  color: #00bfa5; /* teal accent */
+}
+
+.user-list div {
+  padding: 8px 12px;
+  margin: 6px 0;
+  background: #2a2a2a;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.user-list div.talking {
+  background: #00bfa5;
+  color: #121212;
+  font-weight: 600;
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+  .container {
+    padding: 15px;
+    max-width: 95%;
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  .ptt-btn {
+    width: 120px;
+    height: 120px;
+    font-size: 16px;
+  }
+
+  .btn {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  input[type="text"], .custom-select select {
+    font-size: 13px;
+  }
+}

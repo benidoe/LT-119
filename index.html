@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LT-119 Walkie Talkie</title>
+  <!-- Modern Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <div class="container">
+    <h1>LT-119 Online Walkie Talkie</h1>
+
+    <!-- Name input -->
+    <div class="input-group">
+      <label for="username">Your name:</label>
+      <input type="text" id="username" placeholder="Enter your name"/>
+    </div>
+
+    <!-- Channel selector -->
+    <div class="input-group">
+      <label for="channel">Choose a channel:</label>
+      <div class="custom-select">
+        <select id="channel">
+          <option value="">Select a channel</option>
+          <option value="101.7">Channel 101.7</option>
+          <option value="101.9">Channel 101.9</option>
+          <option value="102.4">Channel 102.4</option>
+          <option value="103.8">Channel 103.8</option>
+          <option value="104.2">Channel 104.2</option>
+          <option value="104.5">Channel 104.5</option>
+          <option value="105.9">Channel 105.9</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button id="joinBtn" class="btn">Join Channel</button>
+        <button id="leaveBtn" class="btn btn-secondary">Leave Channel</button>
+      </div>
+    </div>
+
+    <!-- Push-to-talk button -->
+    <div class="ptt-container">
+      <button id="pttBtn" class="ptt-btn">Hold to Talk</button>
+    </div>
+
+    <!-- Volume and mute controls -->
+    <div id="controls">
+      <label for="volume">Volume:</label>
+      <input type="range" id="volume" min="0" max="100" value="100"/>
+      <button id="muteBtn" class="btn">Mute</button>
+    </div>
+
+    <!-- Status messages -->
+    <div id="status" class="status"></div>
+
+    <!-- User list -->
+    <div id="users" class="user-list"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
