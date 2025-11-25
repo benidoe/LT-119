@@ -8,7 +8,7 @@ const server = http.createServer(app);
 // Allow CORS for your GitHub Pages domain
 const io = new Server(server, {
   cors: {
-    origin: "https://benidoe.github.io/LT-119/", // replace with your actual Pages URL
+    origin: "https://benidoe.github.io/LT-119", // your Pages URL (no trailing slash)
     methods: ["GET", "POST"]
   }
 });
@@ -130,7 +130,8 @@ io.on('connection', (socket) => {
     if (!current || current !== data.channel) return;
     if (channelTalkers[current] !== socket.id) return; // mic priority guard
 
-    socket.to(data.channel).emit('audioChunk', {
+    // Broadcast audio chunk to EVERYONE in the channel (except sender)
+    io.to(current).emit('audioChunk', {
       id: socket.id,
       chunk: data.chunk
     });

@@ -233,15 +233,17 @@ socket.on('userTalking', (data) => {
   }
 });
 
-// Receive audio
+// Receive audio (fixed)
 socket.on('audioChunk', (data) => {
+  // Ensure chunk is treated as a Blob
+  const blob = new Blob([data.chunk], { type: 'audio/webm; codecs=opus' });
   const reader = new FileReader();
   reader.onload = () => {
     if (sourceBuffer && !sourceBuffer.updating) {
       sourceBuffer.appendBuffer(new Uint8Array(reader.result));
     }
   };
-  reader.readAsArrayBuffer(data.chunk);
+  reader.readAsArrayBuffer(blob);
 });
 
 // Volume/mute controls
