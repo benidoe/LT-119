@@ -1,5 +1,5 @@
 // Connect to backend Socket.IO (replace with your actual backend URL)
-const socket = io("https://lt119.onrender.com");
+const socket = io("https://lt-119.onrender.com");
 
 const usernameInput = document.getElementById('username');
 const channelSelect = document.getElementById('channel');

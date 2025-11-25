@@ -8,7 +8,7 @@ const server = http.createServer(app);
 // Allow CORS for your GitHub Pages domain
 const io = new Server(server, {
   cors: {
-    origin: "https://benidoe.github.io", // replace with your actual Pages URL
+    origin: "https://benidoe.github.io/LT-119/", // replace with your actual Pages URL
     methods: ["GET", "POST"]
   }
 });
