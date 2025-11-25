@@ -18,7 +18,14 @@ let localStream = null;
 let micTrack = null;               // local audio track for PTT enable/disable
 let peerConnections = {};          // { peerId: RTCPeerConnection }
 let remoteAudios = {};             // { peerId: HTMLAudioElement }
-let muted = false;                 // global mute state
+let muted = false;       
+
+// Silence detection
+let audioContext;
+let analyser;
+let sourceNode;
+let silenceThreshold = 0.02; // tweak this value
+let staticPlaying = false;// global mute state
 
 // Sound effects (relative to root)
 const beepOn = new Audio('assets/sound/beep-on.mp3');
@@ -146,15 +153,22 @@ document.addEventListener('keyup', (e) => {
 });
 
 // Talking helpers (PTT via track enable/disable)
-function startTalking() {
+async function startTalking() {
   pttBtn.classList.add('active');
   try { beepOn.play(); } catch {}
   if (micTrack) micTrack.enabled = true;
 
-  // Play static locally until actual audio is detected
-  try { staticSound.play(); } catch {}
+  // Set up audio analyser to detect silence
+  if (!audioContext) {
+    audioContext = new AudioContext();
+    sourceNode = audioContext.createMediaStreamSource(localStream);
+    analyser = audioContext.createAnalyser();
+    sourceNode.connect(analyser);
+  }
 
-  // Immediately update *your own* talking indicator locally
+  detectSilence();
+
+  // Immediately update your own indicator
   const userEl = document.getElementById(`user-${socket.id}`);
   if (userEl) {
     userEl.classList.add('talking');
@@ -169,8 +183,12 @@ function stopTalking() {
   setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
 
-  // Stop static when you stop talking
-  try { staticSound.pause(); staticSound.currentTime = 0; } catch {}
+  // Stop static
+  if (staticPlaying) {
+    staticSound.pause();
+    staticSound.currentTime = 0;
+    staticPlaying = false;
+  }
 
   const userEl = document.getElementById(`user-${socket.id}`);
   if (userEl) {
@@ -179,6 +197,49 @@ function stopTalking() {
   }
 
   socket.emit('stopTalking', currentChannel);
+}
+
+function detectSilence() {
+  const bufferLength = analyser.fftSize;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function check() {
+    analyser.getByteTimeDomainData(dataArray);
+    let sum = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const val = (dataArray[i] - 128) / 128;
+      sum += val * val;
+    }
+    const rms = Math.sqrt(sum / bufferLength);
+
+    if (rms < silenceThreshold) {
+      if (!staticPlaying) {
+        staticSound.volume = 0.75;
+        staticSound.loop = true;
+        staticSound.play();
+        staticPlaying = true;
+      }
+    } else {
+      if (staticPlaying) {
+        staticSound.pause();
+        staticSound.currentTime = 0;
+        staticPlaying = false;
+      }
+    }
+
+    if (micTrack && micTrack.enabled) {
+      requestAnimationFrame(check);
+    } else {
+      // stop static when mic disabled
+      if (staticPlaying) {
+        staticSound.pause();
+        staticSound.currentTime = 0;
+        staticPlaying = false;
+      }
+    }
+  }
+
+  check();
 }
 
 // Disconnect on unload
