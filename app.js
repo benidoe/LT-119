@@ -23,6 +23,9 @@ let muted = false;                 // global mute state
 // Sound effects (relative to root)
 const beepOn = new Audio('assets/sound/beep-on.mp3');
 const beepOff = new Audio('assets/sound/beep-off.mp3');
+const staticSound = new Audio('assets/sound/static.mp3');
+staticSound.loop = true;        // make it loop continuously
+staticSound.volume = 0.75;      // set volume to 75% instead of 100%
 
 // Status helper
 function showStatus(message, isError = true) {
@@ -43,7 +46,6 @@ function isTyping() {
 window.addEventListener('DOMContentLoaded', () => {
   const savedName = localStorage.getItem('username');
   const savedChannel = localStorage.getItem('channel');
-
   if (savedName) usernameInput.value = savedName;
   if (savedChannel) channelSelect.value = savedChannel;
 });
@@ -55,33 +57,23 @@ joinBtn.addEventListener('click', async () => {
     showStatus('Please select a channel before joining.');
     return;
   }
-
   if (currentChannel === channel) {
     showStatus(`Already connected to Channel ${channel}`, true);
     return;
   }
-
   username = usernameInput.value.replace(/\s+/g, ' ').trim();
   if (!username) {
     username = `User-${Math.floor(Math.random() * 1000)}`;
   }
-
   localStorage.setItem('username', username);
   localStorage.setItem('channel', channel);
 
   try {
-    // Prepare local mic stream (with common voice call constraints)
     localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
     micTrack = localStream.getAudioTracks()[0];
-    // Start muted until PTT pressed
     if (micTrack) micTrack.enabled = false;
-
     socket.emit('joinChannel', { channel, username });
     showStatus(`Joining Channel ${channel} as ${username}...`, false);
     joinBtn.blur();
@@ -99,21 +91,13 @@ leaveBtn.addEventListener('click', () => {
   }
   socket.emit('leaveChannel', { channel: currentChannel, username });
   leaveBtn.blur();
-
-  // Close all peer connections
-  Object.entries(peerConnections).forEach(([id, pc]) => {
-    try { pc.close(); } catch {}
-  });
+  Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch {} });
   peerConnections = {};
-
-  // Remove remote audio elements
-  Object.entries(remoteAudios).forEach(([id, audio]) => {
+  Object.values(remoteAudios).forEach(audio => {
     try { audio.pause(); } catch {}
-    if (audio && audio.parentNode) audio.parentNode.removeChild(audio);
+    if (audio.parentNode) audio.parentNode.removeChild(audio);
   });
   remoteAudios = {};
-
-  // Disable local mic
   if (micTrack) micTrack.enabled = false;
 });
 
@@ -137,10 +121,9 @@ let spacePressed = false;
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !spacePressed) {
-    if (isTyping()) return; // allow typing spaces
-    e.preventDefault();     // prevent button clicks
+    if (isTyping()) return;
+    e.preventDefault(); // prevent scrolling
     spacePressed = true;
-
     if (!currentChannel) {
       showStatus('You must join a channel before talking.');
       return;
@@ -155,9 +138,8 @@ document.addEventListener('keyup', (e) => {
       spacePressed = false;
       return;
     }
-    e.preventDefault();
+    e.preventDefault(); // prevent scrolling
     spacePressed = false;
-
     if (!currentChannel) return;
     stopTalking();
   }
@@ -169,6 +151,9 @@ function startTalking() {
   try { beepOn.play(); } catch {}
   if (micTrack) micTrack.enabled = true;
 
+  // Play static locally until actual audio is detected
+  try { staticSound.play(); } catch {}
+
   // Immediately update *your own* talking indicator locally
   const userEl = document.getElementById(`user-${socket.id}`);
   if (userEl) {
@@ -176,7 +161,6 @@ function startTalking() {
     userEl.innerHTML = `<b>${username}</b> (talking)`;
   }
 
-  // Still notify the server so others see it
   socket.emit('startTalking', currentChannel);
 }
 
@@ -185,7 +169,9 @@ function stopTalking() {
   setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
 
-  // Immediately clear your own indicator locally
+  // Stop static when you stop talking
+  try { staticSound.pause(); staticSound.currentTime = 0; } catch {}
+
   const userEl = document.getElementById(`user-${socket.id}`);
   if (userEl) {
     userEl.classList.remove('talking');
@@ -204,7 +190,6 @@ window.addEventListener('beforeunload', () => {
 // Active channel awareness
 socket.on('activeChannel', (channel) => {
   currentChannel = channel;
-
   if (channel) {
     showStatus(`Active Channel: ${channel}`, false);
   } else {
@@ -220,7 +205,6 @@ socket.on('userList', (users) => {
     usersDiv.innerHTML = '';
     return;
   }
-
   usersDiv.innerHTML = `<h3>Active Channel: ${currentChannel}</h3><h4>Users:</h4>`;
   users.forEach(user => {
     const userEl = document.createElement('div');
@@ -237,6 +221,10 @@ socket.on('userTalking', (data) => {
     if (data.talking) {
       userEl.classList.add('talking');
       userEl.innerHTML = `<b>${data.username}</b> (talking)`;
+      // Stop static if someone else is talking
+      if (data.id !== socket.id) {
+        try { staticSound.pause(); staticSound.currentTime = 0; } catch {}
+      }
     } else {
       userEl.classList.remove('talking');
       userEl.innerHTML = `<b>${data.username}</b>`;
@@ -323,7 +311,6 @@ function createPeerConnection(peerId) {
 
   peerConnections[peerId] = pc;
 
-  // Remote media: create/update audio element per peer
   pc.ontrack = (event) => {
     let audio = remoteAudios[peerId];
     if (!audio) {
@@ -334,8 +321,7 @@ function createPeerConnection(peerId) {
       document.body.appendChild(audio);
     }
     audio.srcObject = event.streams[0];
-    // Apply mute state globally
-    audio.muted = muted;
+    audio.muted = muted; // apply global mute state
   };
 
   pc.onicecandidate = (event) => {
