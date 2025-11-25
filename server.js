@@ -65,6 +65,9 @@ io.on('connection', (socket) => {
     // Confirm active channel + send updated list
     socket.emit('activeChannel', channel);
     broadcastUserList(channel);
+
+    // Notify others so they can start WebRTC handshakes
+    socket.to(channel).emit('peerJoined', { id: socket.id, username });
   });
 
   // Leave channel
@@ -90,12 +93,15 @@ io.on('connection', (socket) => {
     // Update user list for channel left
     broadcastUserList(current);
 
+    // Inform peers to close connections
+    socket.to(current).emit('peerLeft', { id: socket.id });
+
     // Reset client state
     socket.emit('activeChannel', null);
     socket.emit('userList', []);
   });
 
-  // Talking indicators with mic priority
+  // Talking indicators with mic priority (kept for UI/UX)
   socket.on('startTalking', (channel) => {
     if (userChannels[socket.id] !== channel) return;
 
@@ -124,17 +130,33 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Audio chunks only if mic is locked to this user
-  socket.on('audioChunk', (data) => {
-    const current = userChannels[socket.id];
-    if (!current || current !== data.channel) return;
-    if (channelTalkers[current] !== socket.id) return; // mic priority guard
+  // WebRTC signaling (replaces audioChunk transport)
+  socket.on('offer', ({ channel, offer, to }) => {
+    // Send the offer to a specific peer in the same channel or broadcast to all others
+    if (to) {
+      io.to(to).emit('offer', { id: socket.id, offer });
+    } else {
+      socket.to(channel).emit('offer', { id: socket.id, offer });
+    }
+  });
 
-    // Broadcast audio chunk to EVERYONE in the channel (except sender)
-    io.to(current).emit('audioChunk', {
-      id: socket.id,
-      chunk: data.chunk
-    });
+  socket.on('answer', ({ channel, answer, to }) => {
+    // Send the answer back to the original offerer
+    const target = to || null;
+    if (target) {
+      io.to(target).emit('answer', { id: socket.id, answer });
+    } else {
+      socket.to(channel).emit('answer', { id: socket.id, answer });
+    }
+  });
+
+  socket.on('iceCandidate', ({ channel, candidate, to }) => {
+    // Forward ICE candidates to the right peer
+    if (to) {
+      io.to(to).emit('iceCandidate', { id: socket.id, candidate });
+    } else {
+      socket.to(channel).emit('iceCandidate', { id: socket.id, candidate });
+    }
   });
 
   // Disconnect cleanup
@@ -149,6 +171,11 @@ io.on('connection', (socket) => {
         username: userNames[socket.id],
         talking: false
       });
+    }
+
+    // Inform peers of departure
+    if (channel) {
+      socket.to(channel).emit('peerLeft', { id: socket.id });
     }
 
     delete userNames[socket.id];

@@ -12,20 +12,13 @@ const muteBtn = document.getElementById('muteBtn');
 const statusDiv = document.getElementById('status');
 
 let currentChannel = null;
-let mediaRecorder = null;
-let audioStream = null;
 let username = null;
 
-// Playback setup
-let mediaSource = new MediaSource();
-let sourceBuffer;
-let audioElement = new Audio();
-audioElement.src = URL.createObjectURL(mediaSource);
-audioElement.autoplay = true;
-
-mediaSource.addEventListener('sourceopen', () => {
-  sourceBuffer = mediaSource.addSourceBuffer('audio/webm; codecs=opus');
-});
+// WebRTC state
+let localStream = null;
+let micTrack = null;               // local audio track for PTT enable/disable
+let peerConnections = {};          // { peerId: RTCPeerConnection }
+let remoteAudios = {};             // { peerId: HTMLAudioElement }
 
 // Sound effects (relative to root)
 const beepOn = new Audio('assets/sound/beep-on.mp3');
@@ -56,7 +49,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Join channel
-joinBtn.addEventListener('click', () => {
+joinBtn.addEventListener('click', async () => {
   const channel = channelSelect.value;
   if (!channel) {
     showStatus('Please select a channel before joining.');
@@ -68,7 +61,6 @@ joinBtn.addEventListener('click', () => {
     return;
   }
 
-  // Allow spaces inside the username; collapse multiples
   username = usernameInput.value.replace(/\s+/g, ' ').trim();
   if (!username) {
     username = `User-${Math.floor(Math.random() * 1000)}`;
@@ -77,11 +69,26 @@ joinBtn.addEventListener('click', () => {
   localStorage.setItem('username', username);
   localStorage.setItem('channel', channel);
 
-  socket.emit('joinChannel', { channel, username });
-  showStatus(`Joining Channel ${channel} as ${username}...`, false);
+  try {
+    // Prepare local mic stream (with common voice call constraints)
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+    micTrack = localStream.getAudioTracks()[0];
+    // Start muted until PTT pressed
+    if (micTrack) micTrack.enabled = false;
 
-  // Remove focus so spacebar won't "click" this button later
-  joinBtn.blur();
+    socket.emit('joinChannel', { channel, username });
+    showStatus(`Joining Channel ${channel} as ${username}...`, false);
+    joinBtn.blur();
+  } catch (err) {
+    console.error('Microphone error:', err);
+    showStatus('Microphone access denied or unavailable.');
+  }
 });
 
 // Leave channel
@@ -92,10 +99,26 @@ leaveBtn.addEventListener('click', () => {
   }
   socket.emit('leaveChannel', { channel: currentChannel, username });
   leaveBtn.blur();
+
+  // Close all peer connections
+  Object.entries(peerConnections).forEach(([id, pc]) => {
+    try { pc.close(); } catch {}
+  });
+  peerConnections = {};
+
+  // Remove remote audio elements
+  Object.entries(remoteAudios).forEach(([id, audio]) => {
+    try { audio.pause(); } catch {}
+    if (audio && audio.parentNode) audio.parentNode.removeChild(audio);
+  });
+  remoteAudios = {};
+
+  // Disable local mic
+  if (micTrack) micTrack.enabled = false;
 });
 
 // PTT press (mouse)
-pttBtn.addEventListener('mousedown', async () => {
+pttBtn.addEventListener('mousedown', () => {
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
@@ -112,10 +135,10 @@ pttBtn.addEventListener('mouseup', () => {
 // Spacebar PTT support
 let spacePressed = false;
 
-document.addEventListener('keydown', async (e) => {
+document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !spacePressed) {
     if (isTyping()) return; // allow typing spaces
-    e.preventDefault(); // prevent button clicks
+    e.preventDefault();     // prevent button clicks
     spacePressed = true;
 
     if (!currentChannel) {
@@ -140,54 +163,25 @@ document.addEventListener('keyup', (e) => {
   }
 });
 
-// Talking helpers
-async function startTalking() {
+// Talking helpers (PTT via track enable/disable)
+function startTalking() {
   pttBtn.classList.add('active');
-  beepOn.play();
-
-  try {
-    if (!audioStream) {
-      audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }
-
-    mediaRecorder = new MediaRecorder(audioStream);
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        socket.emit('audioChunk', {
-          channel: currentChannel,
-          chunk: event.data
-        });
-      }
-    };
-
-    mediaRecorder.start(250);
-    socket.emit('startTalking', currentChannel);
-  } catch (err) {
-    showStatus('Microphone access denied or unavailable.');
-    console.error('Microphone error:', err);
-  }
+  try { beepOn.play(); } catch {}
+  if (micTrack) micTrack.enabled = true;
+  socket.emit('startTalking', currentChannel);
 }
 
 function stopTalking() {
   pttBtn.classList.remove('active');
-  setTimeout(() => beepOff.play(), 200);
-
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-  }
-
-  if (audioStream) {
-    audioStream.getTracks().forEach(track => track.stop());
-    audioStream = null;
-  }
-
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+  if (micTrack) micTrack.enabled = false;
   socket.emit('stopTalking', currentChannel);
 }
 
 // Disconnect on unload
 window.addEventListener('beforeunload', () => {
   socket.disconnect();
+  Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch {} });
 });
 
 // Active channel awareness
@@ -219,7 +213,7 @@ socket.on('userList', (users) => {
   });
 });
 
-// Speaking indicators
+// Speaking indicators (UI only)
 socket.on('userTalking', (data) => {
   const userEl = document.getElementById(`user-${data.id}`);
   if (userEl) {
@@ -233,25 +227,140 @@ socket.on('userTalking', (data) => {
   }
 });
 
-// Receive audio (fixed)
-socket.on('audioChunk', (data) => {
-  // Ensure chunk is treated as a Blob
-  const blob = new Blob([data.chunk], { type: 'audio/webm; codecs=opus' });
-  const reader = new FileReader();
-  reader.onload = () => {
-    if (sourceBuffer && !sourceBuffer.updating) {
-      sourceBuffer.appendBuffer(new Uint8Array(reader.result));
-    }
-  };
-  reader.readAsArrayBuffer(blob);
+// Peer presence events
+socket.on('peerJoined', ({ id, username }) => {
+  // Create a connection and send an offer specifically to the new peer
+  const pc = createPeerConnection(id);
+  // Add local track
+  if (localStream) {
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+  pc._peerId = id;
+
+  pc.createOffer()
+    .then(offer => pc.setLocalDescription(offer))
+    .then(() => {
+      socket.emit('offer', { channel: currentChannel, offer: pc.localDescription, to: id });
+    })
+    .catch(err => console.error('Offer error:', err));
 });
 
-// Volume/mute controls
+socket.on('peerLeft', ({ id }) => {
+  // Close and clean up for this peer
+  const pc = peerConnections[id];
+  if (pc) {
+    try { pc.close(); } catch {}
+    delete peerConnections[id];
+  }
+  const audio = remoteAudios[id];
+  if (audio) {
+    try { audio.pause(); } catch {}
+    if (audio.parentNode) audio.parentNode.removeChild(audio);
+    delete remoteAudios[id];
+  }
+});
+
+// WebRTC signaling handlers
+socket.on('offer', async ({ id, offer }) => {
+  // Incoming offer from peer id
+  let pc = peerConnections[id];
+  if (!pc) {
+    pc = createPeerConnection(id);
+    // Add local track
+    if (localStream) {
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+    pc._peerId = id;
+  }
+
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('answer', { channel: currentChannel, answer: pc.localDescription, to: id });
+  } catch (err) {
+    console.error('Answer error:', err);
+  }
+});
+
+socket.on('answer', async ({ id, answer }) => {
+  const pc = peerConnections[id];
+  if (!pc) return;
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  } catch (err) {
+    console.error('Set remote answer error:', err);
+  }
+});
+
+socket.on('iceCandidate', async ({ id, candidate }) => {
+  const pc = peerConnections[id];
+  if (!pc || !candidate) return;
+  try {
+    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch (err) {
+    console.error('Add ICE candidate error:', err);
+  }
+});
+
+// Create and maintain a peer connection to a specific peer
+function createPeerConnection(peerId) {
+  const pc = new RTCPeerConnection({
+    // Using default STUN for simplicity; can add TURN later for NAT traversal
+    iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
+  });
+
+  peerConnections[peerId] = pc;
+
+  // Remote media: create/update audio element per peer
+  pc.ontrack = (event) => {
+    let audio = remoteAudios[peerId];
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.playsInline = true;
+      remoteAudios[peerId] = audio;
+      document.body.appendChild(audio);
+    }
+    audio.srcObject = event.streams[0];
+    // Apply current UI volume/mute
+    audio.volume = volumeSlider.value / 100;
+    audio.muted = muteBtn.textContent === 'Unmute';
+  };
+
+  // ICE candidates flow to the specific peer
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('iceCandidate', { channel: currentChannel, candidate: event.candidate, to: peerId });
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+      // Clean up on failure/disconnect
+      const audio = remoteAudios[peerId];
+      if (audio) {
+        try { audio.pause(); } catch {}
+        if (audio.parentNode) audio.parentNode.removeChild(audio);
+        delete remoteAudios[peerId];
+      }
+      delete peerConnections[peerId];
+    }
+  };
+
+  return pc;
+}
+
+// Volume/mute controls (apply to all remote audio elements)
 volumeSlider.addEventListener('input', () => {
-  audioElement.volume = volumeSlider.value / 100;
+  const vol = volumeSlider.value / 100;
+  Object.values(remoteAudios).forEach(a => { a.volume = vol; });
 });
 
 muteBtn.addEventListener('click', () => {
-  audioElement.muted = !audioElement.muted;
-  muteBtn.textContent = audioElement.muted ? 'Unmute' : 'Mute';
+  const newMuted = muteBtn.textContent !== 'Mute';
+  // Toggle UI text
+  muteBtn.textContent = newMuted ? 'Mute' : 'Unmute';
+  // Apply to all remote audio elements
+  Object.values(remoteAudios).forEach(a => { a.muted = newMuted; });
 });
