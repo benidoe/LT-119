@@ -7,7 +7,6 @@ const joinBtn = document.getElementById('joinBtn');
 const leaveBtn = document.getElementById('leaveBtn');
 const pttBtn = document.getElementById('pttBtn');
 const usersDiv = document.getElementById('users');
-const volumeSlider = document.getElementById('volume');
 const muteBtn = document.getElementById('muteBtn');
 const statusDiv = document.getElementById('status');
 
@@ -19,6 +18,7 @@ let localStream = null;
 let micTrack = null;               // local audio track for PTT enable/disable
 let peerConnections = {};          // { peerId: RTCPeerConnection }
 let remoteAudios = {};             // { peerId: HTMLAudioElement }
+let muted = false;                 // global mute state
 
 // Sound effects (relative to root)
 const beepOn = new Audio('assets/sound/beep-on.mp3');
@@ -246,9 +246,7 @@ socket.on('userTalking', (data) => {
 
 // Peer presence events
 socket.on('peerJoined', ({ id, username }) => {
-  // Create a connection and send an offer specifically to the new peer
   const pc = createPeerConnection(id);
-  // Add local track
   if (localStream) {
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   }
@@ -263,7 +261,6 @@ socket.on('peerJoined', ({ id, username }) => {
 });
 
 socket.on('peerLeft', ({ id }) => {
-  // Close and clean up for this peer
   const pc = peerConnections[id];
   if (pc) {
     try { pc.close(); } catch {}
@@ -279,11 +276,9 @@ socket.on('peerLeft', ({ id }) => {
 
 // WebRTC signaling handlers
 socket.on('offer', async ({ id, offer }) => {
-  // Incoming offer from peer id
   let pc = peerConnections[id];
   if (!pc) {
     pc = createPeerConnection(id);
-    // Add local track
     if (localStream) {
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
@@ -323,7 +318,6 @@ socket.on('iceCandidate', async ({ id, candidate }) => {
 // Create and maintain a peer connection to a specific peer
 function createPeerConnection(peerId) {
   const pc = new RTCPeerConnection({
-    // Using default STUN for simplicity; can add TURN later for NAT traversal
     iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
   });
 
@@ -340,12 +334,10 @@ function createPeerConnection(peerId) {
       document.body.appendChild(audio);
     }
     audio.srcObject = event.streams[0];
-    // Apply current UI volume/mute
-    audio.volume = volumeSlider.value / 100;
-    audio.muted = muteBtn.textContent === 'Unmute';
+    // Apply mute state globally
+    audio.muted = muted;
   };
 
-  // ICE candidates flow to the specific peer
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit('iceCandidate', { channel: currentChannel, candidate: event.candidate, to: peerId });
@@ -354,7 +346,6 @@ function createPeerConnection(peerId) {
 
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
-      // Clean up on failure/disconnect
       const audio = remoteAudios[peerId];
       if (audio) {
         try { audio.pause(); } catch {}
@@ -368,16 +359,9 @@ function createPeerConnection(peerId) {
   return pc;
 }
 
-// Volume/mute controls (apply to all remote audio elements)
-volumeSlider.addEventListener('input', () => {
-  const vol = volumeSlider.value / 100;
-  Object.values(remoteAudios).forEach(a => { a.volume = vol; });
-});
-
+// Mute button control (apply to all remote audio elements)
 muteBtn.addEventListener('click', () => {
-  const newMuted = muteBtn.textContent !== 'Mute';
-  // Toggle UI text
-  muteBtn.textContent = newMuted ? 'Mute' : 'Unmute';
-  // Apply to all remote audio elements
-  Object.values(remoteAudios).forEach(a => { a.muted = newMuted; });
+  muted = !muted;
+  muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+  Object.values(remoteAudios).forEach(a => { a.muted = muted; });
 });
