@@ -10,18 +10,24 @@ body {
   margin: 0;
 }
 
-/* Walkie-talkie container */
-.walkie-talkie {
+/* Original container + walkie enhancement */
+.container {
   background: #1e1e1e;
-  border-radius: 20px;
+  padding: 25px;
+  border-radius: 12px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-  width: 300px;
-  min-height: 600px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 95%;
+  max-width: 480px;
+  text-align: center;
+}
+
+/* Make it look like a walkie-talkie */
+.container.walkie {
+  max-width: 320px;           /* narrower, more vertical */
+  width: 95%;
+  border-radius: 20px;
   position: relative;
-  padding: 20px;
+  padding-top: 40px;          /* room for antenna */
 }
 
 /* Antenna */
@@ -34,40 +40,32 @@ body {
   left: 50%;
   transform: translateX(-50%);
   border-radius: 6px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.5);
 }
 
 /* Header */
 h1 {
-  margin: 10px 0 20px;
-  color: #00bfa5;
-  font-size: 20px;
+  margin-bottom: 16px;
+  color: #00bfa5; /* teal accent */
+  font-size: 22px;
   font-weight: 700;
-  text-align: center;
 }
 
-/* Screen area */
+/* Walkie "screen" */
 .screen {
   background: #111;
   border: 2px inset #444;
-  width: 90%;
-  height: 150px;
-  margin-bottom: 20px;
+  width: 100%;
+  height: 160px;
+  margin: 0 auto 20px;
   padding: 10px;
   overflow-y: auto;
-  border-radius: 10px;
-}
-
-/* Controls area */
-.controls {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-radius: 12px;
 }
 
 /* Inputs and buttons */
 .input-group {
-  margin: 12px 0;
+  margin: 15px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -101,6 +99,10 @@ input[type="text"] {
   box-sizing: border-box;
 }
 
+.custom-select select option {
+  text-align: center;
+}
+
 .custom-select select:hover {
   background: #3a3a3a;
 }
@@ -113,17 +115,17 @@ input[type="text"] {
 }
 
 .btn {
-  padding: 8px 14px;
+  padding: 8px 14px; /* tighter so text fits */
   border: none;
   border-radius: 6px;
-  background: #00bfa5;
+  background: #00bfa5; /* teal accent */
   color: #121212;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
   font-size: 14px;
   flex: 1;
-  white-space: nowrap;
+  white-space: nowrap; /* keep text on one line */
 }
 
 .btn:hover {
@@ -131,7 +133,7 @@ input[type="text"] {
 }
 
 .btn.btn-secondary {
-  background: #00bfa5;
+  background: #00bfa5; /* teal accent */
   color: #121212;
 }
 
@@ -153,11 +155,14 @@ input[type="text"] {
   border: none;
   background: #333;
   color: #fff;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 0 15px rgba(0,0,0,0.6);
   transition: background 0.2s, box-shadow 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation; /* better mobile behavior */
 }
 
 .ptt-btn.active {
@@ -165,7 +170,7 @@ input[type="text"] {
   box-shadow: 0 0 25px #ff3b3b;
 }
 
-/* Controls row */
+/* Controls */
 #controls {
   margin: 20px 0;
   display: flex;
@@ -181,8 +186,8 @@ input[type="text"] {
 
 /* Status messages */
 .status {
-  margin: 10px 0;
-  padding: 8px;
+  margin: 15px 0;
+  padding: 10px;
   border-radius: 6px;
   font-weight: 600;
   text-align: center;
@@ -194,7 +199,7 @@ input[type="text"] {
 }
 
 .status.success {
-  background: #00bfa5;
+  background: #00bfa5; /* teal accent for success */
   color: #121212;
 }
 
@@ -206,12 +211,12 @@ input[type="text"] {
 
 .user-list h3 {
   margin-bottom: 10px;
-  color: #00bfa5;
+  color: #00bfa5; /* teal accent */
 }
 
 .user-list div {
-  padding: 6px 10px;
-  margin: 4px 0;
+  padding: 8px 12px;
+  margin: 6px 0;
   background: #2a2a2a;
   border-radius: 6px;
   transition: background 0.2s;
@@ -225,48 +230,45 @@ input[type="text"] {
 
 /* Responsive tweaks */
 @media (max-width: 600px) {
-  .walkie-talkie {
-    width: 95%;
-    min-height: 500px;
-    padding: 15px;
+  .container.walkie {
+    max-width: 360px; /* allow a bit wider on small screens */
+    padding: 18px;
   }
 
   h1 {
-    font-size: 18px;
+    font-size: 20px;
+  }
+
+  .screen {
+    height: 140px;
   }
 
   .ptt-btn {
-    width: 110px;
-    height: 110px;
-    font-size: 14px;
+    width: 120px;
+    height: 120px;
+    font-size: 16px;
   }
 
   .btn {
-  font-size: 13px;
-  padding: 6px 10px;
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  input[type="text"], .custom-select select {
+    font-size: 13px;
+  }
 }
 
-input[type="text"], 
-.custom-select select {
-  font-size: 13px;
-}
-}
-
-/* Walkie-talkie specific tweaks for smaller screens */
-@media (max-width: 480px) {
-  .walkie-talkie {
-    width: 95%;
-    min-height: 480px;
-    padding: 12px;
+/* Extra-small screens */
+@media (max-width: 420px) {
+  .container.walkie {
+    max-width: 95%;
+    padding: 14px;
   }
 
   .antenna {
-    height: 50px;
-    width: 8px;
-  }
-
-  h1 {
-    font-size: 16px;
+    width: 10px;
+    height: 60px;
   }
 
   .screen {
@@ -274,13 +276,8 @@ input[type="text"],
   }
 
   .ptt-btn {
-    width: 100px;
-    height: 100px;
-    font-size: 13px;
-  }
-
-  .btn {
-    font-size: 12px;
-    padding: 5px 8px;
+    width: 110px;
+    height: 110px;
+    font-size: 15px;
   }
 }
