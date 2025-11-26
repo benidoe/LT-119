@@ -21,10 +21,17 @@ body {
 }
 
 h1 {
-  margin-bottom: 20px;
-  color: #00bfa5; /* teal accent */
+  margin-bottom: 10px;
+  color: #00bfa5;
   font-size: 24px;
   font-weight: 700;
+}
+
+/* Active channel display */
+.active-channel {
+  margin-bottom: 20px;
+  font-weight: 600;
+  color: #00bfa5;
 }
 
 /* Inputs and buttons */
@@ -63,10 +70,6 @@ input[type="text"] {
   box-sizing: border-box;
 }
 
-.custom-select select option {
-  text-align: center;
-}
-
 .custom-select select:hover {
   background: #3a3a3a;
 }
@@ -79,31 +82,23 @@ input[type="text"] {
 }
 
 .btn {
-  padding: 8px 14px; /* tighter so text fits */
+  padding: 8px 14px;
   border: none;
   border-radius: 6px;
-  background: #00bfa5; /* teal accent */
+  background: #00bfa5;
   color: #121212;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
   font-size: 14px;
   flex: 1;
-  white-space: nowrap; /* keep text on one line */
+  white-space: nowrap;
 }
 
-.btn:hover {
-  background: #009e8c;
-}
+.btn:hover { background: #009e8c; }
 
-.btn.btn-secondary {
-  background: #00bfa5; /* teal accent */
-  color: #121212;
-}
-
-.btn.btn-secondary:hover {
-  background: #009e8c;
-}
+.btn.btn-secondary { background: #555; color: #eee; }
+.btn.btn-secondary:hover { background: #777; }
 
 /* Push-to-talk button */
 .ptt-container {
@@ -137,12 +132,6 @@ input[type="text"] {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-#volume {
-  width: 60%;
-  margin: 0 10px;
 }
 
 /* Status messages */
@@ -154,25 +143,13 @@ input[type="text"] {
   text-align: center;
 }
 
-.status.error {
-  background: #ff3b3b;
-  color: #fff;
-}
-
-.status.success {
-  background: #00bfa5; /* teal accent for success */
-  color: #121212;
-}
+.status.error { background: #ff3b3b; color: #fff; }
+.status.success { background: #00bfa5; color: #121212; }
 
 /* User list */
 .user-list {
   margin-top: 20px;
   text-align: left;
-}
-
-.user-list h3 {
-  margin-bottom: 10px;
-  color: #00bfa5; /* teal accent */
 }
 
 .user-list div {
@@ -196,9 +173,7 @@ input[type="text"] {
     max-width: 95%;
   }
 
-  h1 {
-    font-size: 20px;
-  }
+  h1 { font-size: 20px; }
 
   .ptt-btn {
     width: 120px;
@@ -206,12 +181,7 @@ input[type="text"] {
     font-size: 16px;
   }
 
-  .btn {
-    font-size: 13px;
-    padding: 6px 10px;
-  }
+  .btn { font-size: 13px; padding: 6px 10px; }
 
-  input[type="text"], .custom-select select {
-    font-size: 13px;
-  }
+  input[type="text"], .custom-select select { font-size: 13px; }
 }

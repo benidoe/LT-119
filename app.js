@@ -102,7 +102,7 @@ function playStatic() {
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.30; // 30% volume
+  gainNode.gain.value = 0.20; // 30% volume
   staticSource.connect(gainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
@@ -353,8 +353,11 @@ window.addEventListener('beforeunload', () => {
 socket.on('activeChannel', (channel) => {
   currentChannel = channel;
   if (channel) {
-    showStatus(`Active Channel: ${channel}`, false);
+    // Only update the top display
+    activeChannelDiv.textContent = `Channel ${channel}`;
+    // no status message here
   } else {
+    activeChannelDiv.textContent = "No channel joined";
     showStatus('Left channel. Select a channel to join.', false);
     channelSelect.value = '';
     usersDiv.innerHTML = '';
