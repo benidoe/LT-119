@@ -10,8 +10,8 @@ body {
   margin: 0;
 }
 
-/* Original container + walkie enhancement */
-.container {
+/* Walkie-talkie container */
+.walkie-talkie {
   background: #1e1e1e;
   border-radius: 20px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.6);
@@ -39,11 +39,11 @@ body {
   box-shadow: 0 6px 12px rgba(0,0,0,0.5);
 }
 
-/* Top bar with active channel + users button */
+/* Top bar with active channel only */
 .top-bar {
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   background: #111;
   padding: 8px 12px;
@@ -56,9 +56,14 @@ body {
   color: #00bfa5;
 }
 
-.btn.small {
-  padding: 6px 10px;
-  font-size: 12px;
+/* Users button in top-right corner of page */
+.users-page-btn {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 200;
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 /* Header */
@@ -224,7 +229,7 @@ input[type="text"], .custom-select select {
 
 /* Responsive tweaks */
 @media (max-width: 600px) {
-  .container.walkie {
+  .walkie-talkie {
     max-width: 360px;
     padding: 18px;
     height: 95vh;
@@ -244,7 +249,7 @@ input[type="text"], .custom-select select {
 }
 
 @media (max-width: 420px) {
-  .container.walkie {
+  .walkie-talkie {
     max-width: 95%;
     padding: 14px;
     height: 95vh;

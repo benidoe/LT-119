@@ -32,15 +32,16 @@ let silenceThreshold = 0.02;
 let staticPlaying = false;
 let silenceStart = null;
 
-// Web Audio API static sound
+// Static sound
 let staticBuffer;
 let staticSource;
+let staticGainNode; // gain node for static volume
 
 // Beep sounds
 const beepOn = new Audio('assets/sound/beep-on.mp3');
 const beepOff = new Audio('assets/sound/beep-off.mp3');
 
-// Unlock audio context and preload beep sounds on first gesture
+// Unlock audio context and preload beep sounds
 function unlockAudio() {
   if (audioContext && audioContext.state === 'suspended') {
     audioContext.resume();
@@ -61,7 +62,7 @@ function showStatus(message, isError = true) {
   statusDiv.textContent = message;
 }
 
-// Helper: is the user currently typing in a field?
+// Helper: is typing?
 function isTyping() {
   const el = document.activeElement;
   if (!el) return false;
@@ -78,7 +79,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedChannel) channelSelect.value = savedChannel;
 });
 
-// Load static sound buffer once
+// Load static sound buffer
 async function loadStaticSound() {
   if (!audioContext) audioContext = new AudioContext();
   const response = await fetch('assets/sound/static.mp3');
@@ -87,15 +88,15 @@ async function loadStaticSound() {
 }
 loadStaticSound();
 
-// Play/stop static using buffer source
+// Play/stop static
 function playStatic() {
   if (staticSource || !staticBuffer) return;
   staticSource = audioContext.createBufferSource();
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
-  const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.30; // 30% volume
-  staticSource.connect(gainNode).connect(audioContext.destination);
+  staticGainNode = audioContext.createGain();
+  staticGainNode.gain.value = 0.3; // <-- set static volume here (30%)
+  staticSource.connect(staticGainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
 }
@@ -163,69 +164,50 @@ leaveBtn.addEventListener('click', () => {
   activeChannelDiv.textContent = "No channel joined";
 });
 
-// --- PTT button events (desktop + mobile) ---
-function guardAndStartTalking(beep = true) {
+// --- PTT guard ---
+function guardAndStartTalking() {
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
   }
-  if (beep) try { beepOn.play(); } catch {}
+  try { beepOn.play(); } catch {}
   startTalking();
 }
 
-function guardAndStopTalking(beep = true) {
+function guardAndStopTalking() {
   if (!currentChannel) return;
-  if (beep) setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   stopTalking();
 }
 
-pttBtn.addEventListener('mousedown', (e) => {
-  e.preventDefault();
-  guardAndStartTalking(true);
-});
-pttBtn.addEventListener('mouseup', (e) => {
-  e.preventDefault();
-  guardAndStopTalking(true);
-});
+// PTT events
+pttBtn.addEventListener('mousedown', (e) => { e.preventDefault(); guardAndStartTalking(); });
+pttBtn.addEventListener('mouseup', (e) => { e.preventDefault(); guardAndStopTalking(); });
+pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); guardAndStartTalking(); }, { passive: false });
+pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); guardAndStopTalking(); }, { passive: false });
 
-// Mobile touch events
-pttBtn.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  guardAndStartTalking(true);
-}, { passive: false });
-
-pttBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  guardAndStopTalking(true);
-}, { passive: false });
-
-// Spacebar PTT support
+// Spacebar PTT
 let spacePressed = false;
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !spacePressed) {
     if (isTyping()) return;
     e.preventDefault();
     spacePressed = true;
-    guardAndStartTalking(true);
+    guardAndStartTalking();
   }
 });
 document.addEventListener('keyup', (e) => {
   if (e.code === 'Space' && spacePressed) {
-    if (isTyping()) {
-      spacePressed = false;
-      return;
-    }
+    if (isTyping()) { spacePressed = false; return; }
     e.preventDefault();
     spacePressed = false;
-    guardAndStopTalking(true);
+    guardAndStopTalking();
   }
 });
 
-// Extra safeguard: prevent spacebar scrolling globally
+// Prevent spacebar scroll
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && !isTyping()) {
-    e.preventDefault();
-  }
+  if (e.code === 'Space' && !isTyping()) e.preventDefault();
 });
 
 // Talking helpers
@@ -233,7 +215,6 @@ async function startTalking() {
   pttBtn.classList.add('active');
   if (micTrack) micTrack.enabled = true;
 
-    // Set up analyser
   if (!audioContext) audioContext = new AudioContext();
   if (!sourceNode) {
     sourceNode = audioContext.createMediaStreamSource(localStream);
@@ -423,7 +404,7 @@ socket.on('iceCandidate', async ({ id, candidate }) => {
   }
 });
 
-// Create and maintain a peer connection to a specific peer
+// Create and maintain a peer connection
 function createPeerConnection(peerId) {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
