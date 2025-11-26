@@ -146,7 +146,7 @@ joinBtn.addEventListener('click', async () => {
     micTrack = localStream.getAudioTracks()[0];
     if (micTrack) micTrack.enabled = false;
     socket.emit('joinChannel', { channel, username });
-    showStatus(`Joined Channel ${channel} as ${username}...`, false);
+    showStatus(`Joined Channel ${channel} as ${username}.`, false);
     joinBtn.blur();
   } catch (err) {
     console.error('Microphone error:', err);
