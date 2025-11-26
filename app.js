@@ -26,6 +26,7 @@ let analyser;
 let sourceNode;
 let silenceThreshold = 0.02;
 let staticPlaying = false;
+let silenceStart = null;
 
 // Web Audio API static sound
 let staticBuffer;
@@ -70,7 +71,7 @@ function playStatic() {
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.45; // 45% volume
+  gainNode.gain.value = 0.30; // 30% volume
   staticSource.connect(gainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
@@ -83,6 +84,7 @@ function stopStatic() {
     staticSource = null;
   }
   staticPlaying = false;
+  silenceStart = null;
 }
 
 // Join channel
@@ -180,6 +182,13 @@ document.addEventListener('keyup', (e) => {
   }
 });
 
+// Extra safeguard: prevent spacebar scrolling globally
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !isTyping()) {
+    e.preventDefault();
+  }
+});
+
 // Talking helpers
 async function startTalking() {
   pttBtn.classList.add('active');
@@ -232,8 +241,13 @@ function detectSilence() {
     const rms = Math.sqrt(sum / bufferLength);
 
     if (rms < silenceThreshold) {
-      if (!staticPlaying) playStatic();
+      if (!silenceStart) silenceStart = Date.now();
+      const elapsed = Date.now() - silenceStart;
+      if (elapsed > 1000 && !staticPlaying) { // 1 second grace period
+        playStatic();
+      }
     } else {
+      silenceStart = null;
       if (staticPlaying) stopStatic();
     }
 
