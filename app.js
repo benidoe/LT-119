@@ -71,7 +71,7 @@ function playStatic() {
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.30; // 30% volume
+  gainNode.gain.value = 0.10; // 30% volume
   staticSource.connect(gainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
@@ -243,7 +243,7 @@ function detectSilence() {
     if (rms < silenceThreshold) {
       if (!silenceStart) silenceStart = Date.now();
       const elapsed = Date.now() - silenceStart;
-      if (elapsed > 1000 && !staticPlaying) { // 1 second grace period
+      if (elapsed > 2000 && !staticPlaying) { // 1 second grace period
         playStatic();
       }
     } else {
