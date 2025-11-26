@@ -36,6 +36,19 @@ let staticSource;
 const beepOn = new Audio('assets/sound/beep-on.mp3');
 const beepOff = new Audio('assets/sound/beep-off.mp3');
 
+// Unlock audio context and preload beep sounds on first gesture
+function unlockAudio() {
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  beepOn.play().then(() => { beepOn.pause(); beepOn.currentTime = 0; }).catch(()=>{});
+  beepOff.play().then(() => { beepOff.pause(); beepOff.currentTime = 0; }).catch(()=>{});
+  window.removeEventListener('click', unlockAudio);
+  window.removeEventListener('keydown', unlockAudio);
+}
+window.addEventListener('click', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
+
 // Status helper
 function showStatus(message, isError = true) {
   statusDiv.className = 'status ' + (isError ? 'error' : 'success');
@@ -75,7 +88,7 @@ function playStatic() {
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.03; // 30% volume
+  gainNode.gain.value = 0.30; // 30% volume
   staticSource.connect(gainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
@@ -144,6 +157,7 @@ leaveBtn.addEventListener('click', () => {
 
 // PTT press (mouse)
 pttBtn.addEventListener('mousedown', () => {
+  try { beepOn.play(); } catch {}
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
@@ -153,6 +167,7 @@ pttBtn.addEventListener('mousedown', () => {
 
 // PTT release (mouse)
 pttBtn.addEventListener('mouseup', () => {
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (!currentChannel) return;
   stopTalking();
 });
@@ -165,6 +180,7 @@ document.addEventListener('keydown', (e) => {
     if (isTyping()) return;
     e.preventDefault();
     spacePressed = true;
+    try { beepOn.play(); } catch {}
     if (!currentChannel) {
       showStatus('You must join a channel before talking.');
       return;
@@ -181,6 +197,7 @@ document.addEventListener('keyup', (e) => {
     }
     e.preventDefault();
     spacePressed = false;
+    setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
     if (!currentChannel) return;
     stopTalking();
   }
@@ -196,7 +213,6 @@ window.addEventListener('keydown', (e) => {
 // Talking helpers
 async function startTalking() {
   pttBtn.classList.add('active');
-  try { beepOn.play(); } catch {}
   if (micTrack) micTrack.enabled = true;
 
   // Set up analyser
@@ -249,7 +265,7 @@ function detectSilence() {
     if (rms < silenceThreshold) {
       if (!silenceStart) silenceStart = Date.now();
       const elapsed = Date.now() - silenceStart;
-      if (elapsed > 1200 && !staticPlaying) { // 1 second grace period
+      if (elapsed > 1000 && !staticPlaying) { // 1 second grace period
         playStatic();
       }
     } else {
