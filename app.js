@@ -243,7 +243,7 @@ function detectSilence() {
     if (rms < silenceThreshold) {
       if (!silenceStart) silenceStart = Date.now();
       const elapsed = Date.now() - silenceStart;
-      if (elapsed > 2000 && !staticPlaying) { // 1 second grace period
+      if (elapsed > 1200 && !staticPlaying) { // 1 second grace period
         playStatic();
       }
     } else {
