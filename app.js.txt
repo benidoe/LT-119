@@ -45,11 +45,9 @@ function unlockAudio() {
   beepOff.play().then(() => { beepOff.pause(); beepOff.currentTime = 0; }).catch(()=>{});
   window.removeEventListener('click', unlockAudio);
   window.removeEventListener('keydown', unlockAudio);
-  window.removeEventListener('touchstart', unlockAudio);
 }
 window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
-window.addEventListener('touchstart', unlockAudio);
 
 // Status helper
 function showStatus(message, isError = true) {
@@ -157,9 +155,8 @@ leaveBtn.addEventListener('click', () => {
   if (micTrack) micTrack.enabled = false;
 });
 
-// --- PTT button events (desktop + mobile) ---
-pttBtn.addEventListener('mousedown', (e) => {
-  e.preventDefault();
+// PTT press (mouse)
+pttBtn.addEventListener('mousedown', () => {
   try { beepOn.play(); } catch {}
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
@@ -168,30 +165,12 @@ pttBtn.addEventListener('mousedown', (e) => {
   startTalking();
 });
 
-pttBtn.addEventListener('mouseup', (e) => {
-  e.preventDefault();
+// PTT release (mouse)
+pttBtn.addEventListener('mouseup', () => {
   setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (!currentChannel) return;
   stopTalking();
 });
-
-// Mobile touch events
-pttBtn.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  try { beepOn.play(); } catch {}
-  if (!currentChannel) {
-    showStatus('You must join a channel before talking.');
-    return;
-  }
-  startTalking();
-}, { passive: false });
-
-pttBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
-  if (!currentChannel) return;
-  stopTalking();
-}, { passive: false });
 
 // Spacebar PTT support
 let spacePressed = false;
