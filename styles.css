@@ -6,81 +6,33 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh; /* fit screen */
+  min-height: 100vh;
   margin: 0;
 }
 
-/* Walkie-talkie container */
-.walkie-talkie {
+.container {
   background: #1e1e1e;
-  border-radius: 20px;
+  padding: 25px;
+  border-radius: 12px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.6);
   width: 95%;
-  max-width: 340px;
-  height: 95vh; /* fill screen */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  padding: 20px;
-  box-sizing: border-box;
+  max-width: 480px;
+  text-align: center;
 }
 
-/* Antenna */
-.antenna {
-  width: 12px;
-  height: 70px;
-  background: #333;
-  position: absolute;
-  top: -70px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 6px;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.5);
-}
-
-/* Top bar with active channel only */
-.top-bar {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #111;
-  padding: 8px 12px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-
-.top-bar #activeChannel {
-  font-weight: 600;
-  color: #00bfa5;
-}
-
-/* Users button in top-right corner of page */
-.users-page-btn {
-  position: fixed;
-  top: 15px;
-  right: 15px;
-  z-index: 200;
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-/* Header */
 h1 {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   color: #00bfa5; /* teal accent */
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
 }
 
 /* Inputs and buttons */
 .input-group {
-  margin: 12px 0;
+  margin: 15px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
 }
 
 label {
@@ -88,7 +40,7 @@ label {
   font-weight: 600;
 }
 
-input[type="text"], .custom-select select {
+input[type="text"] {
   padding: 10px;
   border-radius: 6px;
   border: none;
@@ -96,6 +48,23 @@ input[type="text"], .custom-select select {
   text-align: center;
   background: #2a2a2a;
   color: #e0e0e0;
+}
+
+.custom-select select {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  width: 100%;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.custom-select select option {
+  text-align: center;
 }
 
 .custom-select select:hover {
@@ -107,50 +76,54 @@ input[type="text"], .custom-select select {
   gap: 8px;
   margin-top: 10px;
   flex-wrap: wrap;
-  width: 100%;
 }
 
 .btn {
-  padding: 8px 14px;
+  padding: 8px 14px; /* tighter so text fits */
   border: none;
   border-radius: 6px;
-  background: #00bfa5;
+  background: #00bfa5; /* teal accent */
   color: #121212;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
   font-size: 14px;
   flex: 1;
-  white-space: nowrap;
+  white-space: nowrap; /* keep text on one line */
 }
 
-.btn:hover { background: #009e8c; }
+.btn:hover {
+  background: #009e8c;
+}
 
-.btn.btn-secondary { background: #555; color: #eee; }
-.btn.btn-secondary:hover { background: #777; }
+.btn.btn-secondary {
+  background: #00bfa5; /* teal accent */
+  color: #121212;
+}
+
+.btn.btn-secondary:hover {
+  background: #009e8c;
+}
 
 /* Push-to-talk button */
 .ptt-container {
-  margin: 20px 0;
+  margin: 25px 0;
   display: flex;
   justify-content: center;
 }
 
 .ptt-btn {
-  width: 140px;
-  height: 140px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   border: none;
   background: #333;
   color: #fff;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 0 15px rgba(0,0,0,0.6);
   transition: background 0.2s, box-shadow 0.2s;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
 }
 
 .ptt-btn.active {
@@ -160,31 +133,46 @@ input[type="text"], .custom-select select {
 
 /* Controls */
 #controls {
-  margin: 10px 0;
+  margin: 20px 0;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
 }
 
-#volume { width: 60%; margin: 0 10px; }
+#volume {
+  width: 60%;
+  margin: 0 10px;
+}
 
 /* Status messages */
 .status {
-  margin: 10px 0;
-  padding: 8px;
+  margin: 15px 0;
+  padding: 10px;
   border-radius: 6px;
   font-weight: 600;
   text-align: center;
 }
 
-.status.error { background: #ff3b3b; color: #fff; }
-.status.success { background: #00bfa5; color: #121212; }
+.status.error {
+  background: #ff3b3b;
+  color: #fff;
+}
 
-/* User list inside modal */
+.status.success {
+  background: #00bfa5; /* teal accent for success */
+  color: #121212;
+}
+
+/* User list */
 .user-list {
-  margin-top: 10px;
+  margin-top: 20px;
   text-align: left;
+}
+
+.user-list h3 {
+  margin-bottom: 10px;
+  color: #00bfa5; /* teal accent */
 }
 
 .user-list div {
@@ -201,41 +189,16 @@ input[type="text"], .custom-select select {
   font-weight: 600;
 }
 
-/* Modal */
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 100;
-  left: 0; top: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7);
-}
-
-.modal-content {
-  background: #1e1e1e;
-  margin: 10% auto;
-  padding: 20px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 400px;
-  color: #e0e0e0;
-}
-
-.close {
-  float: right;
-  font-size: 24px;
-  cursor: pointer;
-}
-
 /* Responsive tweaks */
 @media (max-width: 600px) {
-  .walkie-talkie {
-    max-width: 360px;
-    padding: 18px;
-    height: 95vh;
+  .container {
+    padding: 15px;
+    max-width: 95%;
   }
 
-  h1 { font-size: 20px; }
+  h1 {
+    font-size: 20px;
+  }
 
   .ptt-btn {
     width: 120px;
@@ -243,23 +206,12 @@ input[type="text"], .custom-select select {
     font-size: 16px;
   }
 
-  .btn { font-size: 13px; padding: 6px 10px; }
-
-  input[type="text"], .custom-select select { font-size: 13px; }
-}
-
-@media (max-width: 420px) {
-  .walkie-talkie {
-    max-width: 95%;
-    padding: 14px;
-    height: 95vh;
+  .btn {
+    font-size: 13px;
+    padding: 6px 10px;
   }
 
-  .antenna { width: 10px; height: 60px; }
-
-  .ptt-btn {
-    width: 110px;
-    height: 110px;
-    font-size: 15px;
+  input[type="text"], .custom-select select {
+    font-size: 13px;
   }
 }

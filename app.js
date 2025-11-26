@@ -1,5 +1,6 @@
-// Connect to backend Socket.IO
+// Connect to backend Socket.IO (replace with your actual backend URL)
 const socket = io("https://lt-119.onrender.com");
+
 
 const usernameInput = document.getElementById('username');
 const channelSelect = document.getElementById('channel');
@@ -9,13 +10,11 @@ const pttBtn = document.getElementById('pttBtn');
 const usersDiv = document.getElementById('users');
 const muteBtn = document.getElementById('muteBtn');
 const statusDiv = document.getElementById('status');
-const activeChannelDiv = document.getElementById('activeChannel');
-const usersBtn = document.getElementById('usersBtn');
-const usersModal = document.getElementById('usersModal');
-const closeModal = document.getElementById('closeModal');
+
 
 let currentChannel = null;
 let username = null;
+
 
 // WebRTC state
 let localStream = null;
@@ -23,6 +22,7 @@ let micTrack = null;
 let peerConnections = {};
 let remoteAudios = {};
 let muted = false;
+
 
 // Silence detection
 let audioContext;
@@ -32,16 +32,18 @@ let silenceThreshold = 0.02;
 let staticPlaying = false;
 let silenceStart = null;
 
-// Static sound
+
+// Web Audio API static sound
 let staticBuffer;
 let staticSource;
-let staticGainNode; // gain node for static volume
+
 
 // Beep sounds
 const beepOn = new Audio('assets/sound/beep-on.mp3');
 const beepOff = new Audio('assets/sound/beep-off.mp3');
 
-// Unlock audio context and preload beep sounds
+
+// Unlock audio context and preload beep sounds on first gesture
 function unlockAudio() {
   if (audioContext && audioContext.state === 'suspended') {
     audioContext.resume();
@@ -56,13 +58,15 @@ window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
 window.addEventListener('touchstart', unlockAudio);
 
+
 // Status helper
 function showStatus(message, isError = true) {
   statusDiv.className = 'status ' + (isError ? 'error' : 'success');
   statusDiv.textContent = message;
 }
 
-// Helper: is typing?
+
+// Helper: is the user currently typing in a field?
 function isTyping() {
   const el = document.activeElement;
   if (!el) return false;
@@ -70,6 +74,7 @@ function isTyping() {
   const editable = el.isContentEditable;
   return (editable || tag === 'INPUT' || tag === 'TEXTAREA');
 }
+
 
 // Restore saved settings
 window.addEventListener('DOMContentLoaded', () => {
@@ -79,7 +84,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedChannel) channelSelect.value = savedChannel;
 });
 
-// Load static sound buffer
+
+// Load static sound buffer once
 async function loadStaticSound() {
   if (!audioContext) audioContext = new AudioContext();
   const response = await fetch('assets/sound/static.mp3');
@@ -88,18 +94,20 @@ async function loadStaticSound() {
 }
 loadStaticSound();
 
-// Play/stop static
+
+// Play/stop static using buffer source
 function playStatic() {
   if (staticSource || !staticBuffer) return;
   staticSource = audioContext.createBufferSource();
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
-  staticGainNode = audioContext.createGain();
-  staticGainNode.gain.value = 0.3; // <-- set static volume here (30%)
-  staticSource.connect(staticGainNode).connect(audioContext.destination);
+  const gainNode = audioContext.createGain();
+  gainNode.gain.value = 0.30; // 30% volume
+  staticSource.connect(gainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
 }
+
 
 function stopStatic() {
   if (staticSource) {
@@ -110,6 +118,7 @@ function stopStatic() {
   staticPlaying = false;
   silenceStart = null;
 }
+
 
 // Join channel
 joinBtn.addEventListener('click', async () => {
@@ -129,6 +138,7 @@ joinBtn.addEventListener('click', async () => {
   localStorage.setItem('username', username);
   localStorage.setItem('channel', channel);
 
+
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
@@ -143,6 +153,7 @@ joinBtn.addEventListener('click', async () => {
     showStatus('Microphone access denied or unavailable.');
   }
 });
+
 
 // Leave channel
 leaveBtn.addEventListener('click', () => {
@@ -160,61 +171,98 @@ leaveBtn.addEventListener('click', () => {
   });
   remoteAudios = {};
   if (micTrack) micTrack.enabled = false;
-  currentChannel = null;
-  activeChannelDiv.textContent = "No channel joined";
 });
 
-// --- PTT guard ---
-function guardAndStartTalking() {
+
+// --- PTT button events (desktop + mobile) ---
+pttBtn.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  try { beepOn.play(); } catch {}
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
   }
-  try { beepOn.play(); } catch {}
   startTalking();
-}
+});
 
-function guardAndStopTalking() {
-  if (!currentChannel) return;
+
+pttBtn.addEventListener('mouseup', (e) => {
+  e.preventDefault();
   setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+  if (!currentChannel) return;
   stopTalking();
-}
+});
 
-// PTT events
-pttBtn.addEventListener('mousedown', (e) => { e.preventDefault(); guardAndStartTalking(); });
-pttBtn.addEventListener('mouseup', (e) => { e.preventDefault(); guardAndStopTalking(); });
-pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); guardAndStartTalking(); }, { passive: false });
-pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); guardAndStopTalking(); }, { passive: false });
 
-// Spacebar PTT
+// Mobile touch events
+pttBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  try { beepOn.play(); } catch {}
+  if (!currentChannel) {
+    showStatus('You must join a channel before talking.');
+    return;
+  }
+  startTalking();
+}, { passive: false });
+
+
+pttBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+  if (!currentChannel) return;
+  stopTalking();
+}, { passive: false });
+
+
+// Spacebar PTT support
 let spacePressed = false;
+
+
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !spacePressed) {
     if (isTyping()) return;
     e.preventDefault();
     spacePressed = true;
-    guardAndStartTalking();
-  }
-});
-document.addEventListener('keyup', (e) => {
-  if (e.code === 'Space' && spacePressed) {
-    if (isTyping()) { spacePressed = false; return; }
-    e.preventDefault();
-    spacePressed = false;
-    guardAndStopTalking();
+    try { beepOn.play(); } catch {}
+    if (!currentChannel) {
+      showStatus('You must join a channel before talking.');
+      return;
+    }
+    startTalking();
   }
 });
 
-// Prevent spacebar scroll
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && !isTyping()) e.preventDefault();
+
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' && spacePressed) {
+    if (isTyping()) {
+      spacePressed = false;
+      return;
+    }
+    e.preventDefault();
+    spacePressed = false;
+    setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+    if (!currentChannel) return;
+    stopTalking();
+  }
 });
+
+
+// Extra safeguard: prevent spacebar scrolling globally
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !isTyping()) {
+    e.preventDefault();
+  }
+});
+
 
 // Talking helpers
 async function startTalking() {
   pttBtn.classList.add('active');
   if (micTrack) micTrack.enabled = true;
 
+
+  // Set up analyser
   if (!audioContext) audioContext = new AudioContext();
   if (!sourceNode) {
     sourceNode = audioContext.createMediaStreamSource(localStream);
@@ -222,7 +270,9 @@ async function startTalking() {
     sourceNode.connect(analyser);
   }
 
+
   detectSilence();
+
 
   const userEl = document.getElementById(`user-${socket.id}`);
   if (userEl) {
@@ -230,13 +280,17 @@ async function startTalking() {
     userEl.innerHTML = `<b>${username}</b> (talking)`;
   }
 
+
   socket.emit('startTalking', currentChannel);
 }
 
+
 function stopTalking() {
   pttBtn.classList.remove('active');
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
   stopStatic();
+
 
   const userEl = document.getElementById(`user-${socket.id}`);
   if (userEl) {
@@ -244,12 +298,15 @@ function stopTalking() {
     userEl.innerHTML = `<b>${username}</b>`;
   }
 
+
   socket.emit('stopTalking', currentChannel);
 }
+
 
 function detectSilence() {
   const bufferLength = analyser.fftSize;
   const dataArray = new Uint8Array(bufferLength);
+
 
   function check() {
     analyser.getByteTimeDomainData(dataArray);
@@ -259,6 +316,7 @@ function detectSilence() {
       sum += val * val;
     }
     const rms = Math.sqrt(sum / bufferLength);
+
 
     if (rms < silenceThreshold) {
       if (!silenceStart) silenceStart = Date.now();
@@ -271,6 +329,7 @@ function detectSilence() {
       if (staticPlaying) stopStatic();
     }
 
+
     if (micTrack && micTrack.enabled) {
       requestAnimationFrame(check);
     } else {
@@ -278,8 +337,10 @@ function detectSilence() {
     }
   }
 
+
   check();
 }
+
 
 // Disconnect on unload
 window.addEventListener('beforeunload', () => {
@@ -287,27 +348,27 @@ window.addEventListener('beforeunload', () => {
   Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch {} });
 });
 
+
 // Active channel awareness
 socket.on('activeChannel', (channel) => {
   currentChannel = channel;
   if (channel) {
-    activeChannelDiv.textContent = `Channel ${channel}`;
     showStatus(`Active Channel: ${channel}`, false);
   } else {
-    activeChannelDiv.textContent = "No channel joined";
     showStatus('Left channel. Select a channel to join.', false);
     channelSelect.value = '';
     usersDiv.innerHTML = '';
   }
 });
 
-// User list rendering (for modal)
+
+// User list rendering
 socket.on('userList', (users) => {
   if (!currentChannel) {
     usersDiv.innerHTML = '';
     return;
   }
-  usersDiv.innerHTML = '';
+  usersDiv.innerHTML = `<h3>Active Channel: ${currentChannel}</h3><h4>Users:</h4>`;
   users.forEach(user => {
     const userEl = document.createElement('div');
     userEl.id = `user-${user.id}`;
@@ -316,6 +377,7 @@ socket.on('userList', (users) => {
   });
 });
 
+
 // Speaking indicators
 socket.on('userTalking', (data) => {
   const userEl = document.getElementById(`user-${data.id}`);
@@ -323,6 +385,7 @@ socket.on('userTalking', (data) => {
     if (data.talking) {
       userEl.classList.add('talking');
       userEl.innerHTML = `<b>${data.username}</b> (talking)`;
+      // Stop static if someone else is talking
       if (data.id !== socket.id) {
         stopStatic();
       }
@@ -333,6 +396,7 @@ socket.on('userTalking', (data) => {
   }
 });
 
+
 // Peer presence events
 socket.on('peerJoined', ({ id, username }) => {
   const pc = createPeerConnection(id);
@@ -341,6 +405,7 @@ socket.on('peerJoined', ({ id, username }) => {
   }
   pc._peerId = id;
 
+
   pc.createOffer()
     .then(offer => pc.setLocalDescription(offer))
     .then(() => {
@@ -348,6 +413,7 @@ socket.on('peerJoined', ({ id, username }) => {
     })
     .catch(err => console.error('Offer error:', err));
 });
+
 
 socket.on('peerLeft', ({ id }) => {
   const pc = peerConnections[id];
@@ -363,6 +429,7 @@ socket.on('peerLeft', ({ id }) => {
   }
 });
 
+
 // WebRTC signaling handlers
 socket.on('offer', async ({ id, offer }) => {
   let pc = peerConnections[id];
@@ -374,6 +441,7 @@ socket.on('offer', async ({ id, offer }) => {
     pc._peerId = id;
   }
 
+
   try {
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await pc.createAnswer();
@@ -383,6 +451,7 @@ socket.on('offer', async ({ id, offer }) => {
     console.error('Answer error:', err);
   }
 });
+
 
 socket.on('answer', async ({ id, answer }) => {
   const pc = peerConnections[id];
@@ -394,6 +463,7 @@ socket.on('answer', async ({ id, answer }) => {
   }
 });
 
+
 socket.on('iceCandidate', async ({ id, candidate }) => {
   const pc = peerConnections[id];
   if (!pc || !candidate) return;
@@ -404,13 +474,16 @@ socket.on('iceCandidate', async ({ id, candidate }) => {
   }
 });
 
-// Create and maintain a peer connection
+
+// Create and maintain a peer connection to a specific peer
 function createPeerConnection(peerId) {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
   });
 
+
   peerConnections[peerId] = pc;
+
 
   pc.ontrack = (event) => {
     let audio = remoteAudios[peerId];
@@ -422,14 +495,16 @@ function createPeerConnection(peerId) {
       document.body.appendChild(audio);
     }
     audio.srcObject = event.streams[0];
-    audio.muted = muted;
+    audio.muted = muted; // apply global mute state
   };
+
 
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit('iceCandidate', { channel: currentChannel, candidate: event.candidate, to: peerId });
     }
   };
+
 
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
@@ -443,25 +518,14 @@ function createPeerConnection(peerId) {
     }
   };
 
+
   return pc;
 }
 
-// Mute button control
+
+// Mute button control (apply to all remote audio elements)
 muteBtn.addEventListener('click', () => {
   muted = !muted;
   muteBtn.textContent = muted ? 'Unmute' : 'Mute';
   Object.values(remoteAudios).forEach(a => { a.muted = muted; });
-});
-
-// Modal controls
-usersBtn.addEventListener('click', () => {
-  usersModal.style.display = 'block';
-});
-closeModal.addEventListener('click', () => {
-  usersModal.style.display = 'none';
-});
-window.addEventListener('click', (e) => {
-  if (e.target === usersModal) {
-    usersModal.style.display = 'none';
-  }
 });
