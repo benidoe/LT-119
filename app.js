@@ -303,7 +303,7 @@ joinBtn.onclick = async () => {
     }
 
     // 2. Start Socket.IO join process
-    updateStatus(`Joining channel ${currentChannel} as ${username}...`, 'info');
+    // *** REMOVED TEMPORARY "JOINING..." STATUS HERE. We rely only on server confirmation. ***
     socket.emit('joinChannel', { channel: currentChannel, username: username });
 
     // 3. Enable PTT button and controls
@@ -435,7 +435,7 @@ socket.on('disconnect', () => {
 });
 
 socket.on('joinSuccess', ({ channel, username: name, peers }) => {
-    // *** FIX IMPLEMENTATION: Update status indicator after successful join ***
+    // This is the status that confirms the successful join
     currentChannel = channel;
     username = name;
     updateStatus(`Joined channel ${channel} as ${username}.`, 'success');
