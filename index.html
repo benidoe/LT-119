@@ -10,53 +10,60 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
-  <div class="container">
+  <div class="walkie-talkie">
+    <!-- Antenna -->
+    <div class="antenna"></div>
+
+    <!-- Header -->
     <h1>LT-119 Online Walkie Talkie</h1>
 
-    <!-- Name input -->
-    <div class="input-group">
-      <label for="username">Your name:</label>
-      <input type="text" id="username" placeholder="Enter your name"/>
+    <!-- Screen area -->
+    <div class="screen">
+      <div id="status" class="status"></div>
+      <div id="users" class="user-list"></div>
     </div>
 
-    <!-- Channel selector -->
-    <div class="input-group">
-      <label for="channel">Choose a channel:</label>
-      <div class="custom-select">
-        <select id="channel">
-          <option value="">Select a channel</option>
-          <option value="101.7">Channel 101.7</option>
-          <option value="101.9">Channel 101.9</option>
-          <option value="102.4">Channel 102.4</option>
-          <option value="103.8">Channel 103.8</option>
-          <option value="104.2">Channel 104.2</option>
-          <option value="104.5">Channel 104.5</option>
-          <option value="105.9">Channel 105.9</option>
-        </select>
+    <!-- Controls area -->
+    <div class="controls">
+      <!-- Name input -->
+      <div class="input-group">
+        <label for="username">Your name:</label>
+        <input type="text" id="username" placeholder="Enter your name"/>
       </div>
-      <div class="btn-row">
-        <button id="joinBtn" class="btn">Join Channel</button>
-        <button id="leaveBtn" class="btn btn-secondary">Leave Channel</button>
+
+      <!-- Channel selector -->
+      <div class="input-group">
+        <label for="channel">Choose a channel:</label>
+        <div class="custom-select">
+          <select id="channel">
+            <option value="">Select a channel</option>
+            <option value="101.7">Channel 101.7</option>
+            <option value="101.9">Channel 101.9</option>
+            <option value="102.4">Channel 102.4</option>
+            <option value="103.8">Channel 103.8</option>
+            <option value="104.2">Channel 104.2</option>
+            <option value="104.5">Channel 104.5</option>
+            <option value="105.9">Channel 105.9</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button id="joinBtn" class="btn">Join</button>
+          <button id="leaveBtn" class="btn btn-secondary">Leave</button>
+        </div>
+      </div>
+
+      <!-- Push-to-talk button -->
+      <div class="ptt-container">
+        <button id="pttBtn" class="ptt-btn">Hold to Talk</button>
+      </div>
+
+      <!-- Volume and mute controls -->
+      <div id="controls">
+        <label for="volume">Volume:</label>
+        <input type="range" id="volume" min="0" max="100" value="100"/>
+        <button id="muteBtn" class="btn">Mute</button>
       </div>
     </div>
-
-    <!-- Push-to-talk button -->
-    <div class="ptt-container">
-      <button id="pttBtn" class="ptt-btn">Hold to Talk</button>
-    </div>
-
-    <!-- Volume and mute controls -->
-    <div id="controls">
-      <label for="volume">Volume:</label>
-      <input type="range" id="volume" min="0" max="100" value="100"/>
-      <button id="muteBtn" class="btn">Mute</button>
-    </div>
-
-    <!-- Status messages -->
-    <div id="status" class="status"></div>
-
-    <!-- User list -->
-    <div id="users" class="user-list"></div>
   </div>
 
   <script src="https://lt-119.onrender.com/socket.io/socket.io.js"></script>

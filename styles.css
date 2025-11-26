@@ -10,26 +10,64 @@ body {
   margin: 0;
 }
 
-.container {
+/* Walkie-talkie container */
+.walkie-talkie {
   background: #1e1e1e;
-  padding: 25px;
-  border-radius: 12px;
+  border-radius: 20px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-  width: 95%;
-  max-width: 480px;
+  width: 300px;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 20px;
+}
+
+/* Antenna */
+.antenna {
+  width: 12px;
+  height: 70px;
+  background: #333;
+  position: absolute;
+  top: -70px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 6px;
+}
+
+/* Header */
+h1 {
+  margin: 10px 0 20px;
+  color: #00bfa5;
+  font-size: 20px;
+  font-weight: 700;
   text-align: center;
 }
 
-h1 {
+/* Screen area */
+.screen {
+  background: #111;
+  border: 2px inset #444;
+  width: 90%;
+  height: 150px;
   margin-bottom: 20px;
-  color: #00bfa5; /* teal accent */
-  font-size: 24px;
-  font-weight: 700;
+  padding: 10px;
+  overflow-y: auto;
+  border-radius: 10px;
+}
+
+/* Controls area */
+.controls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Inputs and buttons */
 .input-group {
-  margin: 15px 0;
+  margin: 12px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -63,10 +101,6 @@ input[type="text"] {
   box-sizing: border-box;
 }
 
-.custom-select select option {
-  text-align: center;
-}
-
 .custom-select select:hover {
   background: #3a3a3a;
 }
@@ -79,17 +113,17 @@ input[type="text"] {
 }
 
 .btn {
-  padding: 8px 14px; /* tighter so text fits */
+  padding: 8px 14px;
   border: none;
   border-radius: 6px;
-  background: #00bfa5; /* teal accent */
+  background: #00bfa5;
   color: #121212;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
   font-size: 14px;
   flex: 1;
-  white-space: nowrap; /* keep text on one line */
+  white-space: nowrap;
 }
 
 .btn:hover {
@@ -97,7 +131,7 @@ input[type="text"] {
 }
 
 .btn.btn-secondary {
-  background: #00bfa5; /* teal accent */
+  background: #00bfa5;
   color: #121212;
 }
 
@@ -113,13 +147,13 @@ input[type="text"] {
 }
 
 .ptt-btn {
-  width: 160px;
-  height: 160px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   border: none;
   background: #333;
   color: #fff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 0 15px rgba(0,0,0,0.6);
@@ -131,7 +165,7 @@ input[type="text"] {
   box-shadow: 0 0 25px #ff3b3b;
 }
 
-/* Controls */
+/* Controls row */
 #controls {
   margin: 20px 0;
   display: flex;
@@ -147,8 +181,8 @@ input[type="text"] {
 
 /* Status messages */
 .status {
-  margin: 15px 0;
-  padding: 10px;
+  margin: 10px 0;
+  padding: 8px;
   border-radius: 6px;
   font-weight: 600;
   text-align: center;
@@ -160,24 +194,24 @@ input[type="text"] {
 }
 
 .status.success {
-  background: #00bfa5; /* teal accent for success */
+  background: #00bfa5;
   color: #121212;
 }
 
 /* User list */
 .user-list {
-  margin-top: 20px;
+  margin-top: 10px;
   text-align: left;
 }
 
 .user-list h3 {
   margin-bottom: 10px;
-  color: #00bfa5; /* teal accent */
+  color: #00bfa5;
 }
 
 .user-list div {
-  padding: 8px 12px;
-  margin: 6px 0;
+  padding: 6px 10px;
+  margin: 4px 0;
   background: #2a2a2a;
   border-radius: 6px;
   transition: background 0.2s;
@@ -191,27 +225,62 @@ input[type="text"] {
 
 /* Responsive tweaks */
 @media (max-width: 600px) {
-  .container {
+  .walkie-talkie {
+    width: 95%;
+    min-height: 500px;
     padding: 15px;
-    max-width: 95%;
   }
 
   h1 {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .ptt-btn {
-    width: 120px;
-    height: 120px;
-    font-size: 16px;
+    width: 110px;
+    height: 110px;
+    font-size: 14px;
   }
 
   .btn {
-    font-size: 13px;
-    padding: 6px 10px;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+input[type="text"], 
+.custom-select select {
+  font-size: 13px;
+}
+}
+
+/* Walkie-talkie specific tweaks for smaller screens */
+@media (max-width: 480px) {
+  .walkie-talkie {
+    width: 95%;
+    min-height: 480px;
+    padding: 12px;
   }
 
-  input[type="text"], .custom-select select {
+  .antenna {
+    height: 50px;
+    width: 8px;
+  }
+
+  h1 {
+    font-size: 16px;
+  }
+
+  .screen {
+    height: 120px;
+  }
+
+  .ptt-btn {
+    width: 100px;
+    height: 100px;
     font-size: 13px;
+  }
+
+  .btn {
+    font-size: 12px;
+    padding: 5px 8px;
   }
 }
