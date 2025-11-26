@@ -32,6 +32,10 @@ let silenceStart = null;
 let staticBuffer;
 let staticSource;
 
+// Beep sounds
+const beepOn = new Audio('assets/sound/beep-on.mp3');
+const beepOff = new Audio('assets/sound/beep-off.mp3');
+
 // Status helper
 function showStatus(message, isError = true) {
   statusDiv.className = 'status ' + (isError ? 'error' : 'success');
@@ -192,6 +196,7 @@ window.addEventListener('keydown', (e) => {
 // Talking helpers
 async function startTalking() {
   pttBtn.classList.add('active');
+  try { beepOn.play(); } catch {}
   if (micTrack) micTrack.enabled = true;
 
   // Set up analyser
@@ -215,6 +220,7 @@ async function startTalking() {
 
 function stopTalking() {
   pttBtn.classList.remove('active');
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
   stopStatic();
 
