@@ -210,32 +210,32 @@ pttBtn.addEventListener('touchend', (e) => {
   stopTalking();
 }, { passive: false });
 
-pttBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
-  if (!currentChannel) return;
-  stopTalking();
-}, { passive: false });
-
-
 // Spacebar PTT support
 let spacePressed = false;
-
-
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !spacePressed) {
     if (isTyping()) return;
     e.preventDefault();
     spacePressed = true;
-    try { beepOn.play(); } catch {}
     if (!currentChannel) {
       showStatus('You must join a channel before talking.');
       return;
     }
+    try { beepOn.play(); } catch {}
     startTalking();
   }
 });
 
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' && spacePressed) {
+    if (isTyping()) { spacePressed = false; return; }
+    e.preventDefault();
+    spacePressed = false;
+    if (!currentChannel) return;
+    setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+    stopTalking();
+  }
+});
 
 document.addEventListener('keyup', (e) => {
   if (e.code === 'Space' && spacePressed) {
@@ -357,17 +357,19 @@ window.addEventListener('beforeunload', () => {
 socket.on('activeChannel', (channel) => {
   currentChannel = channel;
   if (channel) {
-    // Only update the top display
-    activeChannelDiv.textContent = `Channel ${channel}`;
-    // no status message here
+    // Update only the top display element (if you have one in your HTML)
+    if (typeof activeChannelDiv !== 'undefined' && activeChannelDiv) {
+      activeChannelDiv.textContent = `Channel ${channel}`;
+    }
   } else {
-    activeChannelDiv.textContent = "No channel joined";
+    if (typeof activeChannelDiv !== 'undefined' && activeChannelDiv) {
+      activeChannelDiv.textContent = 'No channel joined';
+    }
     showStatus('Left channel. Select a channel to join.', false);
     channelSelect.value = '';
     usersDiv.innerHTML = '';
   }
 });
-
 
 // User list rendering
 socket.on('userList', (users) => {
@@ -375,7 +377,7 @@ socket.on('userList', (users) => {
     usersDiv.innerHTML = '';
     return;
   }
-  usersDiv.innerHTML = `<h3>Active Channel: ${currentChannel}</h3><h4>Users:</h4>`;
+  usersDiv.innerHTML = '';
   users.forEach(user => {
     const userEl = document.createElement('div');
     userEl.id = `user-${user.id}`;
@@ -383,7 +385,6 @@ socket.on('userList', (users) => {
     usersDiv.appendChild(userEl);
   });
 });
-
 
 // Speaking indicators
 socket.on('userTalking', (data) => {
