@@ -4,26 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LT-119 Walkie Talkie</title>
-  <!-- Modern Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css"/>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
-  <!-- Keep your original container, just add the "walkie" class -->
-  <div class="container walkie">
-    <!-- Antenna element (purely visual) -->
-    <div class="antenna" aria-hidden="true"></div>
+  <div class="walkie-talkie">
+    <div class="antenna"></div>
 
-    <h1>LT-119 Online Walkie Talkie</h1>
-
-    <!-- Walkie screen area for status + users -->
-    <div class="screen">
-      <!-- Status messages -->
-      <div id="status" class="status"></div>
-
-      <!-- User list -->
-      <div id="users" class="user-list"></div>
+    <!-- Top bar with active channel + users button -->
+    <div class="top-bar">
+      <div id="activeChannel">No channel joined</div>
+      <button id="usersBtn" class="btn small">Users</button>
     </div>
 
     <!-- Name input -->
@@ -48,8 +40,8 @@
         </select>
       </div>
       <div class="btn-row">
-        <button id="joinBtn" class="btn">Join Channel</button>
-        <button id="leaveBtn" class="btn btn-secondary">Leave Channel</button>
+        <button id="joinBtn" class="btn">Join</button>
+        <button id="leaveBtn" class="btn btn-secondary">Leave</button>
       </div>
     </div>
 
@@ -63,6 +55,18 @@
       <label for="volume">Volume:</label>
       <input type="range" id="volume" min="0" max="100" value="100"/>
       <button id="muteBtn" class="btn">Mute</button>
+    </div>
+
+    <!-- Status messages -->
+    <div id="status" class="status"></div>
+  </div>
+
+  <!-- Modal for user list -->
+  <div id="usersModal" class="modal">
+    <div class="modal-content">
+      <span id="closeModal" class="close">&times;</span>
+      <h2>Users in Channel</h2>
+      <div id="users" class="user-list"></div>
     </div>
   </div>
 

@@ -1,4 +1,4 @@
-// Connect to backend Socket.IO (replace with your actual backend URL)
+// Connect to backend Socket.IO
 const socket = io("https://lt-119.onrender.com");
 
 const usernameInput = document.getElementById('username');
@@ -9,6 +9,10 @@ const pttBtn = document.getElementById('pttBtn');
 const usersDiv = document.getElementById('users');
 const muteBtn = document.getElementById('muteBtn');
 const statusDiv = document.getElementById('status');
+const activeChannelDiv = document.getElementById('activeChannel');
+const usersBtn = document.getElementById('usersBtn');
+const usersModal = document.getElementById('usersModal');
+const closeModal = document.getElementById('closeModal');
 
 let currentChannel = null;
 let username = null;
@@ -155,61 +159,56 @@ leaveBtn.addEventListener('click', () => {
   });
   remoteAudios = {};
   if (micTrack) micTrack.enabled = false;
+  currentChannel = null;
+  activeChannelDiv.textContent = "No channel joined";
 });
 
 // --- PTT button events (desktop + mobile) ---
-pttBtn.addEventListener('mousedown', (e) => {
-  e.preventDefault();
-  try { beepOn.play(); } catch {}
+function guardAndStartTalking(beep = true) {
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
   }
+  if (beep) try { beepOn.play(); } catch {}
   startTalking();
-});
+}
 
+function guardAndStopTalking(beep = true) {
+  if (!currentChannel) return;
+  if (beep) setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+  stopTalking();
+}
+
+pttBtn.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  guardAndStartTalking(true);
+});
 pttBtn.addEventListener('mouseup', (e) => {
   e.preventDefault();
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
-  if (!currentChannel) return;
-  stopTalking();
+  guardAndStopTalking(true);
 });
 
 // Mobile touch events
 pttBtn.addEventListener('touchstart', (e) => {
   e.preventDefault();
-  try { beepOn.play(); } catch {}
-  if (!currentChannel) {
-    showStatus('You must join a channel before talking.');
-    return;
-  }
-  startTalking();
+  guardAndStartTalking(true);
 }, { passive: false });
 
 pttBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
-  if (!currentChannel) return;
-  stopTalking();
+  guardAndStopTalking(true);
 }, { passive: false });
 
 // Spacebar PTT support
 let spacePressed = false;
-
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !spacePressed) {
     if (isTyping()) return;
     e.preventDefault();
     spacePressed = true;
-    try { beepOn.play(); } catch {}
-    if (!currentChannel) {
-      showStatus('You must join a channel before talking.');
-      return;
-    }
-    startTalking();
+    guardAndStartTalking(true);
   }
 });
-
 document.addEventListener('keyup', (e) => {
   if (e.code === 'Space' && spacePressed) {
     if (isTyping()) {
@@ -218,9 +217,7 @@ document.addEventListener('keyup', (e) => {
     }
     e.preventDefault();
     spacePressed = false;
-    setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
-    if (!currentChannel) return;
-    stopTalking();
+    guardAndStopTalking(true);
   }
 });
 
@@ -236,7 +233,7 @@ async function startTalking() {
   pttBtn.classList.add('active');
   if (micTrack) micTrack.enabled = true;
 
-  // Set up analyser
+    // Set up analyser
   if (!audioContext) audioContext = new AudioContext();
   if (!sourceNode) {
     sourceNode = audioContext.createMediaStreamSource(localStream);
@@ -257,7 +254,6 @@ async function startTalking() {
 
 function stopTalking() {
   pttBtn.classList.remove('active');
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
   stopStatic();
 
@@ -314,21 +310,23 @@ window.addEventListener('beforeunload', () => {
 socket.on('activeChannel', (channel) => {
   currentChannel = channel;
   if (channel) {
+    activeChannelDiv.textContent = `Channel ${channel}`;
     showStatus(`Active Channel: ${channel}`, false);
   } else {
+    activeChannelDiv.textContent = "No channel joined";
     showStatus('Left channel. Select a channel to join.', false);
     channelSelect.value = '';
     usersDiv.innerHTML = '';
   }
 });
 
-// User list rendering
+// User list rendering (for modal)
 socket.on('userList', (users) => {
   if (!currentChannel) {
     usersDiv.innerHTML = '';
     return;
   }
-  usersDiv.innerHTML = `<h3>Active Channel: ${currentChannel}</h3><h4>Users:</h4>`;
+  usersDiv.innerHTML = '';
   users.forEach(user => {
     const userEl = document.createElement('div');
     userEl.id = `user-${user.id}`;
@@ -344,7 +342,6 @@ socket.on('userTalking', (data) => {
     if (data.talking) {
       userEl.classList.add('talking');
       userEl.innerHTML = `<b>${data.username}</b> (talking)`;
-      // Stop static if someone else is talking
       if (data.id !== socket.id) {
         stopStatic();
       }
@@ -444,7 +441,7 @@ function createPeerConnection(peerId) {
       document.body.appendChild(audio);
     }
     audio.srcObject = event.streams[0];
-    audio.muted = muted; // apply global mute state
+    audio.muted = muted;
   };
 
   pc.onicecandidate = (event) => {
@@ -468,9 +465,22 @@ function createPeerConnection(peerId) {
   return pc;
 }
 
-// Mute button control (apply to all remote audio elements)
+// Mute button control
 muteBtn.addEventListener('click', () => {
   muted = !muted;
   muteBtn.textContent = muted ? 'Unmute' : 'Mute';
   Object.values(remoteAudios).forEach(a => { a.muted = muted; });
+});
+
+// Modal controls
+usersBtn.addEventListener('click', () => {
+  usersModal.style.display = 'block';
+});
+closeModal.addEventListener('click', () => {
+  usersModal.style.display = 'none';
+});
+window.addEventListener('click', (e) => {
+  if (e.target === usersModal) {
+    usersModal.style.display = 'none';
+  }
 });
