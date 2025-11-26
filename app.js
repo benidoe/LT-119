@@ -177,34 +177,38 @@ leaveBtn.addEventListener('click', () => {
 // --- PTT button events (desktop + mobile) ---
 pttBtn.addEventListener('mousedown', (e) => {
   e.preventDefault();
-  try { beepOn.play(); } catch {}
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
   }
+  try { beepOn.play(); } catch {}
   startTalking();
 });
 
-
 pttBtn.addEventListener('mouseup', (e) => {
   e.preventDefault();
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (!currentChannel) return;
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   stopTalking();
 });
-
 
 // Mobile touch events
 pttBtn.addEventListener('touchstart', (e) => {
   e.preventDefault();
-  try { beepOn.play(); } catch {}
   if (!currentChannel) {
     showStatus('You must join a channel before talking.');
     return;
   }
+  try { beepOn.play(); } catch {}
   startTalking();
 }, { passive: false });
 
+pttBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (!currentChannel) return;
+  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
+  stopTalking();
+}, { passive: false });
 
 pttBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
