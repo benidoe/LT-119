@@ -31,7 +31,11 @@ const channelTalkers = {}; // { channel: socketId }
 function broadcastUserList(channel) {
   const usersInChannel = Object.entries(userChannels)
     .filter(([id, ch]) => ch === channel)
-    .map(([id]) => ({ id, username: userNames[id] }));
+    .map(([id]) => ({ 
+      id, 
+      username: userNames[id], 
+      talking: channelTalkers[channel] === id // Include talking status
+    }));
   io.to(channel).emit('userList', usersInChannel);
 }
 
@@ -51,7 +55,13 @@ io.on('connection', (socket) => {
 
     // Leave old channel if exists
     if (current) {
+      // Clean up old channel state
+      if (channelTalkers[current] === socket.id) {
+          delete channelTalkers[current];
+      }
       socket.leave(current);
+      // Inform peers of departure before updating the list of the old channel
+      socket.to(current).emit('peerLeft', { id: socket.id });
       broadcastUserList(current);
     }
 
@@ -71,9 +81,12 @@ io.on('connection', (socket) => {
   });
 
   // Leave channel
-  socket.on('leaveChannel', () => {
+  socket.on('leaveChannel', () => { // Removed unused parameters
     const current = userChannels[socket.id];
-    if (!current) return;
+    if (!current) {
+      socket.emit('activeChannel', null); // Reset client state just in case
+      return;
+    }
 
     // Release mic if this user was talking
     if (channelTalkers[current] === socket.id) {
@@ -87,14 +100,15 @@ io.on('connection', (socket) => {
 
     socket.leave(current);
     delete userChannels[socket.id];
+    delete userNames[socket.id]; // Clean up username tracking too
 
     console.log(`User ${socket.id} left ${current}`);
 
-    // Update user list for channel left
-    broadcastUserList(current);
-
     // Inform peers to close connections
     socket.to(current).emit('peerLeft', { id: socket.id });
+    
+    // Update user list for channel left (must be done after channelTalkers/userNames cleanup)
+    broadcastUserList(current);
 
     // Reset client state
     socket.emit('activeChannel', null);
@@ -105,7 +119,7 @@ io.on('connection', (socket) => {
   socket.on('startTalking', (channel) => {
     if (userChannels[socket.id] !== channel) return;
 
-    // If channel is free, lock mic
+    // Only allow talking if no one else is currently holding the lock
     if (!channelTalkers[channel]) {
       channelTalkers[channel] = socket.id;
       io.to(channel).emit('userTalking', {
@@ -113,8 +127,9 @@ io.on('connection', (socket) => {
         username: userNames[socket.id],
         talking: true
       });
-    } else {
-      // Someone else is already talking
+      broadcastUserList(channel); // Update list to show talking status for new users
+    } else if (channelTalkers[channel] !== socket.id) {
+      // Someone else is already talking - notify the client
       socket.emit('channelBusy', channel);
     }
   });
@@ -127,35 +142,29 @@ io.on('connection', (socket) => {
         username: userNames[socket.id],
         talking: false
       });
+      broadcastUserList(channel); // Update list to clear talking status
     }
   });
 
   // WebRTC signaling (replaces audioChunk transport)
   socket.on('offer', ({ channel, offer, to }) => {
-    // Send the offer to a specific peer in the same channel or broadcast to all others
+    // Send the offer to a specific peer in the same channel
     if (to) {
       io.to(to).emit('offer', { id: socket.id, offer });
-    } else {
-      socket.to(channel).emit('offer', { id: socket.id, offer });
     }
   });
 
   socket.on('answer', ({ channel, answer, to }) => {
     // Send the answer back to the original offerer
-    const target = to || null;
-    if (target) {
-      io.to(target).emit('answer', { id: socket.id, answer });
-    } else {
-      socket.to(channel).emit('answer', { id: socket.id, answer });
+    if (to) {
+      io.to(to).emit('answer', { id: socket.id, answer });
     }
   });
 
-  socket.on('iceCandidate', ({ channel, candidate, to }) => {
-    // Forward ICE candidates to the right peer
+  socket.on('iceCandidate', ({ candidate, to }) => {
+    // Forward ICE candidates to the right peer (channel is not needed for forwarding)
     if (to) {
       io.to(to).emit('iceCandidate', { id: socket.id, candidate });
-    } else {
-      socket.to(channel).emit('iceCandidate', { id: socket.id, candidate });
     }
   });
 
@@ -180,6 +189,7 @@ io.on('connection', (socket) => {
 
     delete userNames[socket.id];
     delete userChannels[socket.id];
+    
     if (channel) {
       broadcastUserList(channel);
     }

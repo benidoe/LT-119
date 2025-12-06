@@ -102,7 +102,7 @@ function playStatic() {
   staticSource.buffer = staticBuffer;
   staticSource.loop = true;
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.20; // 30% volume
+  gainNode.gain.value = 0.20; // 20% volume
   staticSource.connect(gainNode).connect(audioContext.destination);
   staticSource.start();
   staticPlaying = true;
@@ -140,13 +140,16 @@ joinBtn.addEventListener('click', async () => {
 
 
   try {
+    // Request microphone access
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
     micTrack = localStream.getAudioTracks()[0];
     if (micTrack) micTrack.enabled = false;
+    
+    // Attempt to join via socket
     socket.emit('joinChannel', { channel, username });
-    showStatus(`Joined Channel ${channel} as ${username}.`, false);
+    showStatus(`Attempting to join Channel ${channel} as ${username}...`, false);
     joinBtn.blur();
   } catch (err) {
     console.error('Microphone error:', err);
@@ -161,8 +164,15 @@ leaveBtn.addEventListener('click', () => {
     showStatus('You are not connected to any channel.', true);
     return;
   }
-  socket.emit('leaveChannel', { channel: currentChannel, username });
+  // Reset PTT state just in case
+  pttBtn.classList.remove('active');
+  spacePressed = false; 
+  stopTalking(); // Ensure mic is disabled and stopTalking event is sent
+  
+  socket.emit('leaveChannel'); // Server derives channel and username from socket.id
   leaveBtn.blur();
+  
+  // Clean up local WebRTC objects immediately
   Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch {} });
   peerConnections = {};
   Object.values(remoteAudios).forEach(audio => {
@@ -188,7 +198,6 @@ pttBtn.addEventListener('mousedown', (e) => {
 pttBtn.addEventListener('mouseup', (e) => {
   e.preventDefault();
   if (!currentChannel) return;
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   stopTalking();
 });
 
@@ -206,7 +215,6 @@ pttBtn.addEventListener('touchstart', (e) => {
 pttBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   if (!currentChannel) return;
-  setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   stopTalking();
 }, { passive: false });
 
@@ -226,26 +234,14 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// REMOVED REDUNDANT KEYUP LISTENER
 document.addEventListener('keyup', (e) => {
   if (e.code === 'Space' && spacePressed) {
-    if (isTyping()) { spacePressed = false; return; }
+    // Reset spacePressed even if typing, but only stopTalking if not typing
+    if (isTyping()) { spacePressed = false; return; } 
+    
     e.preventDefault();
     spacePressed = false;
-    if (!currentChannel) return;
-    setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
-    stopTalking();
-  }
-});
-
-document.addEventListener('keyup', (e) => {
-  if (e.code === 'Space' && spacePressed) {
-    if (isTyping()) {
-      spacePressed = false;
-      return;
-    }
-    e.preventDefault();
-    spacePressed = false;
-    setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
     if (!currentChannel) return;
     stopTalking();
   }
@@ -262,6 +258,8 @@ window.addEventListener('keydown', (e) => {
 
 // Talking helpers
 async function startTalking() {
+  if (!currentChannel) return; // safety check
+  
   pttBtn.classList.add('active');
   if (micTrack) micTrack.enabled = true;
 
@@ -290,6 +288,8 @@ async function startTalking() {
 
 
 function stopTalking() {
+  if (!currentChannel) return; // safety check
+  
   pttBtn.classList.remove('active');
   setTimeout(() => { try { beepOff.play(); } catch {} }, 200);
   if (micTrack) micTrack.enabled = false;
@@ -308,6 +308,7 @@ function stopTalking() {
 
 
 function detectSilence() {
+  if (!analyser) return;
   const bufferLength = analyser.fftSize;
   const dataArray = new Uint8Array(bufferLength);
 
@@ -337,6 +338,7 @@ function detectSilence() {
     if (micTrack && micTrack.enabled) {
       requestAnimationFrame(check);
     } else {
+      // Clean up when mic track is disabled
       stopStatic();
     }
   }
@@ -356,15 +358,14 @@ window.addEventListener('beforeunload', () => {
 // Active channel awareness
 socket.on('activeChannel', (channel) => {
   currentChannel = channel;
+  const activeChannelDiv = document.getElementById('activeChannel');
+  
   if (channel) {
-    // Update only the top display element (if you have one in your HTML)
-    if (typeof activeChannelDiv !== 'undefined' && activeChannelDiv) {
-      activeChannelDiv.textContent = `Channel ${channel}`;
-    }
+    showStatus(`Successfully joined Channel ${channel} as ${username}.`, false);
+    activeChannelDiv.textContent = `Channel ${channel}`;
   } else {
-    if (typeof activeChannelDiv !== 'undefined' && activeChannelDiv) {
-      activeChannelDiv.textContent = 'No channel joined';
-    }
+    // Channel is null, meaning the user left or was disconnected
+    activeChannelDiv.textContent = 'No channel joined';
     showStatus('Left channel. Select a channel to join.', false);
     channelSelect.value = '';
     usersDiv.innerHTML = '';
@@ -382,6 +383,11 @@ socket.on('userList', (users) => {
     const userEl = document.createElement('div');
     userEl.id = `user-${user.id}`;
     userEl.innerHTML = `<b>${user.username}</b>`;
+    // Add speaking class if the user is the current speaker (server tracks this)
+    if (user.talking) {
+      userEl.classList.add('talking');
+      userEl.innerHTML = `<b>${user.username}</b> (talking)`;
+    }
     usersDiv.appendChild(userEl);
   });
 });
@@ -435,6 +441,10 @@ socket.on('peerLeft', ({ id }) => {
     if (audio.parentNode) audio.parentNode.removeChild(audio);
     delete remoteAudios[id];
   }
+  
+  // Remove user from the list
+  const userEl = document.getElementById(`user-${id}`);
+  if (userEl) userEl.remove();
 });
 
 
@@ -499,6 +509,7 @@ function createPeerConnection(peerId) {
       audio = document.createElement('audio');
       audio.autoplay = true;
       audio.playsInline = true;
+      audio.style.display = 'none'; // Hide the audio element
       remoteAudios[peerId] = audio;
       document.body.appendChild(audio);
     }
@@ -515,6 +526,7 @@ function createPeerConnection(peerId) {
 
 
   pc.onconnectionstatechange = () => {
+    // Only handle cleanup on failure/disconnect/close
     if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
       const audio = remoteAudios[peerId];
       if (audio) {
@@ -523,6 +535,10 @@ function createPeerConnection(peerId) {
         delete remoteAudios[peerId];
       }
       delete peerConnections[peerId];
+      
+      // Also notify UI (if needed, though peerLeft should cover this)
+      const userEl = document.getElementById(`user-${peerId}`);
+      if (userEl) userEl.remove();
     }
   };
 
